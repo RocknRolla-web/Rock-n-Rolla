@@ -1,0 +1,320 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление квизом — Rock'n'Rolla</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body {
+            background: #090909;
+            color: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+
+        .quiz-admin {
+            width: min(1100px, 92%);
+            margin: 40px auto;
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .quiz-header h1 {
+            color: #ff9d00;
+            margin: 0;
+        }
+
+        .admin-btn {
+            border: 1px solid #ff9d00;
+            background: #ff9d00;
+            color: #111;
+            padding: 11px 17px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .admin-btn.secondary {
+            background: transparent;
+            color: #ff9d00;
+        }
+
+        .quiz-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+        }
+
+        .quiz-panel {
+            background: #151515;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 22px;
+        }
+
+        .quiz-panel h2 {
+            color: #ff9d00;
+            margin-top: 0;
+        }
+
+        .quiz-field {
+            margin-bottom: 16px;
+        }
+
+        .quiz-field label {
+            display: block;
+            margin-bottom: 7px;
+            color: #ddd;
+        }
+
+        .quiz-field input,
+        .quiz-field textarea,
+        .quiz-field select {
+            box-sizing: border-box;
+            width: 100%;
+            background: #080808;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 7px;
+            padding: 12px;
+            font-size: 15px;
+        }
+
+        .quiz-field textarea {
+            min-height: 75px;
+            resize: vertical;
+        }
+
+        .quiz-field input:focus,
+        .quiz-field textarea:focus,
+        .quiz-field select:focus {
+            outline: none;
+            border-color: #ff9d00;
+        }
+
+        .quiz-hint {
+            color: #999;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .quiz-preview {
+            width: 100%;
+            max-height: 230px;
+            object-fit: contain;
+            margin-top: 12px;
+            border-radius: 8px;
+            background: #080808;
+        }
+
+        .quiz-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .quiz-item {
+            background: #202020;
+            border: 1px solid #393939;
+            border-radius: 9px;
+            padding: 14px;
+        }
+
+        .quiz-item-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .quiz-item-meta {
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .quiz-item-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quiz-item-actions button {
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 7px 10px;
+            color: white;
+            background: #303030;
+            cursor: pointer;
+        }
+
+        .quiz-item-actions button:hover {
+            border-color: #ff9d00;
+        }
+
+        .quiz-item-actions .delete-btn {
+            color: #ff7777;
+        }
+
+        .quiz-status {
+            margin: 18px 0;
+            color: #ffbd4a;
+            white-space: pre-wrap;
+        }
+
+        .quiz-empty {
+            color: #999;
+            padding: 15px 0;
+        }
+
+        .quiz-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 12px 0 18px;
+        }
+
+        .quiz-checkbox input {
+            width: auto;
+        }
+
+        @media (max-width: 750px) {
+            .quiz-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .quiz-admin {
+                margin: 22px auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<main class="quiz-admin">
+
+    <div class="quiz-header">
+        <div>
+            <h1>ROCK'N'ROLLA QUIZ</h1>
+            <p>Управление вопросами пробного квиза</p>
+        </div>
+
+        <a href="dashboard.html" class="admin-btn secondary">
+            ← В панель управления
+        </a>
+    </div>
+
+    <p id="quizStatus" class="quiz-status">Проверяем доступ...</p>
+
+    <div class="quiz-layout">
+
+        <!-- ФОРМА ВОПРОСА -->
+        <section class="quiz-panel">
+            <h2 id="formTitle">Новый вопрос</h2>
+
+            <form id="quizForm">
+
+                <input type="hidden" id="questionId">
+
+                <div class="quiz-field">
+                    <label for="questionType">Тип вопроса</label>
+                    <select id="questionType">
+    <option value="audio">🎵 Аудио</option>
+    <option value="image">🖼️ Изображение</option>
+    <option value="video">🎬 Видео</option>
+    <option value="text">📝 Текстовый вопрос</option>
+</select>
+                </div>
+
+                <div class="quiz-field">
+                    <label for="mediaFile">Медиафайл</label>
+                    <input
+                        type="file"
+                        id="mediaFile"
+                        accept="audio/mpeg,audio/mp3,image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                    >
+                    <div class="quiz-hint">
+                        Можно оставить пустым при редактировании, чтобы сохранить старый файл.
+                        Максимальный размер — 50 МБ.
+                    </div>
+                    <div id="mediaPreview"></div>
+                </div>
+
+                <div class="quiz-field">
+                    <label for="questionText">Текст вопроса</label>
+                    <textarea id="questionText" required></textarea>
+                </div>
+
+                <div class="quiz-field">
+                    <label>Варианты ответов (ровно 5)</label>
+                    <input id="answer1" placeholder="Вариант 1" required>
+                    <input id="answer2" placeholder="Вариант 2" required style="margin-top:8px">
+                    <input id="answer3" placeholder="Вариант 3" required style="margin-top:8px">
+                    <input id="answer4" placeholder="Вариант 4" required style="margin-top:8px">
+                    <input id="answer5" placeholder="Вариант 5" required style="margin-top:8px">
+                </div>
+
+                <div class="quiz-field">
+                    <label for="correctAnswer">Правильный ответ</label>
+                    <select id="correctAnswer" required>
+                        <option value="">Сначала заполни варианты ответов</option>
+                    </select>
+                </div>
+
+                <div class="quiz-field">
+                    <label for="explanation">Пояснение после ответа</label>
+                    <textarea id="explanation"></textarea>
+                </div>
+
+                <div class="quiz-field">
+                    <label for="displayOrder">Порядок вопроса</label>
+                    <input type="number" id="displayOrder" min="1" value="1" required>
+                </div>
+
+                <label class="quiz-checkbox">
+                    <input type="checkbox" id="isPublished" checked>
+                    Опубликовать вопрос
+                </label>
+
+                <button type="submit" class="admin-btn" id="saveQuestionBtn">
+                    Сохранить вопрос
+                </button>
+
+                <button type="button" class="admin-btn secondary" id="cancelEditBtn">
+                    Очистить форму
+                </button>
+
+            </form>
+        </section>
+
+        <!-- СПИСОК ВОПРОСОВ -->
+        <section class="quiz-panel">
+            <h2>Вопросы квиза</h2>
+
+            <div id="quizQuestionList" class="quiz-list">
+                <p class="quiz-empty">Загрузка вопросов...</p>
+            </div>
+        </section>
+
+    </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/quiz-admin.js"></script>
+
+</body>
+</html>

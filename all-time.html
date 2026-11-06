@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+ <link rel="icon" type="image/png" href="images/faviconadmin.png">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Общий рейтинг — Rock'n'Rolla</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/theme.js"></script>
+
+</head>
+
+
+<body class="leaderboard-page">
+
+    <header class="leaderboard-header">
+        <a class="back" href="index.html">← НА ГЛАВНУЮ</a>
+        <h1 class="leaderboard-title">ЛУЧШИЕ РЕЗУЛЬТАТЫ КОМАНД</h1>
+        <div class="leaderboard-subtitle">
+            ФОТОМАТЕРИАЛЫ ОТОБРАНЫ СО ДНЯ ДОСТИЖЕНИЯ КОМАНДАМИ НАИВЫСШЕГО РЕЗУЛЬТАТА
+        </div>
+    </header>
+
+    <main class="leaderboard-main">
+
+        <section id="podium-section" hidden>
+            <h2 class="leaderboard-section-title">ТРОЙКА ЛИДЕРОВ</h2>
+            <div class="leaderboard-podium" id="podium"></div>
+        </section>
+
+        <section>
+            <h2 class="leaderboard-section-title">ТАБЛИЦА КОМАНД</h2>
+
+            <div class="leaderboard-list" id="ranking">
+                <div class="leaderboard-loading">
+                    ЗАГРУЗКА РЕЙТИНГА...
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        function makeLogo(url, className) {
+            const img = document.createElement("img");
+            img.className = className;
+            img.alt = "Логотип команды";
+
+            if (url) {
+                img.src = url;
+                img.onerror = () => {
+                    img.style.display = "none";
+                };
+            } else {
+                img.style.display = "none";
+            }
+
+            return img;
+        }
+
+        function makePodiumCard(team) {
+            const card = document.createElement("div");
+            card.className = "leaderboard-podium-card" +
+                (Number(team.rank) === 1 ? " first" : "");
+
+            const medals = {
+                1: "🥇",
+                2: "🥈",
+                3: "🥉"
+            };
+
+            const medal = document.createElement("div");
+            medal.className = "leaderboard-medal";
+            medal.textContent = medals[team.rank] || "";
+
+            const logo = makeLogo(
+                team.logo_url,
+                "leaderboard-podium-logo"
+            );
+
+            const name = document.createElement("h3");
+            name.className = "leaderboard-podium-name";
+            name.textContent = team.team_name;
+
+            const points = document.createElement("div");
+            points.className = "leaderboard-podium-points";
+            points.textContent = team.total_points + " PTS";
+
+            card.append(medal, logo, name, points);
+            return card;
+        }
+
+        async function loadRanking() {
+            const container = document.getElementById("ranking");
+            const podium = document.getElementById("podium");
+            const podiumSection = document.getElementById("podium-section");
+
+            const { data, error } = await supabaseClient
+                .from("all_time_leaderboard")
+                .select("*")
+                .order("rank", { ascending: true })
+                .order("team_name", { ascending: true });
+
+            if (error) {
+                console.error(error);
+                container.textContent =
+                    "Не удалось загрузить рейтинг. Проверь настройки Supabase.";
+                container.className =
+                    "leaderboard-error";
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                container.textContent = "ПОКА НЕТ РЕЗУЛЬТАТОВ.";
+                container.className =
+                    "leaderboard-empty";
+                return;
+            }
+
+            container.replaceChildren();
+            podium.replaceChildren();
+
+            const topThree = data.slice(0, 3);
+
+            podiumSection.hidden = false;
+
+            const podiumOrder = topThree.length === 3
+                ? [topThree[1], topThree[0], topThree[2]]
+                : topThree;
+
+            podiumOrder.forEach(team => {
+                podium.appendChild(makePodiumCard(team));
+            });
+
+            data.forEach(team => {
+                const card = document.createElement("div");
+                card.className = "leaderboard-team";
+
+                const rank = document.createElement("div");
+                rank.className = "leaderboard-rank";
+                rank.textContent = "#" + team.rank;
+
+                const logo = makeLogo(
+                    team.logo_url,
+                    "leaderboard-logo"
+                );
+
+                const info = document.createElement("div");
+                info.className = "leaderboard-team-info";
+
+                const name = document.createElement("h3");
+                name.className = "leaderboard-team-name";
+                name.textContent = team.team_name;
+
+                
+
+                const points = document.createElement("div");
+                points.className = "leaderboard-points";
+                points.textContent = team.total_points + " PTS";
+
+                info.append(name);
+                card.append(rank, logo, info, points);
+                container.appendChild(card);
+            });
+        }
+
+        loadRanking();
+    </script>
+
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script>
+
+</body>
+
+</html>

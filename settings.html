@@ -1,0 +1,301 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Настройки — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 35px;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 35px;
+        }
+
+        h1 {
+            color: #ff9d00;
+            margin: 0;
+        }
+
+        .back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    color: #ff9d00;
+    text-decoration: none;
+    border: 1px solid #ff9d00;
+    padding: 10px 16px;
+    border-radius: 8px;
+    max-width: 100%;
+}
+
+        .section {
+            background: #1c1c1c;
+            border: 1px solid #393939;
+            border-radius: 14px;
+            padding: 25px;
+            margin-bottom: 22px;
+        }
+
+        h2 {
+            color: #ff9d00;
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 7px;
+            color: #ccc;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            background: #111;
+            color: white;
+            font-size: 15px;
+        }
+
+        button {
+            margin-top: 18px;
+            padding: 12px 18px;
+            border: none;
+            border-radius: 8px;
+            background: #ff9d00;
+            color: #111;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #ffc04d;
+        }
+
+        .danger {
+            background: #a83232;
+            color: white;
+        }
+
+        .danger:hover {
+            background: #cf4545;
+        }
+
+        .muted {
+            color: #999;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 18px;
+            }
+
+            .section {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <header>
+        <h1>НАСТРОЙКИ</h1>
+        <a href="dashboard.html" class="back">← Назад</a>
+    </header>
+
+    <div class="section">
+        <h2>Профиль</h2>
+
+        <p class="muted" id="email">Загрузка...</p>
+
+        <label for="displayName">Отображаемое имя</label>
+        <input id="displayName" type="text" placeholder="Твоё имя">
+
+        <button onclick="saveName()">Сохранить имя</button>
+    </div>
+
+    <div class="section">
+        <h2>Безопасность</h2>
+
+        <label for="newPassword">Новый пароль</label>
+        <input id="newPassword" type="password"
+               placeholder="Минимум 8 символов">
+
+        <button onclick="changePassword()">Изменить пароль</button>
+
+        <p class="muted">
+            После изменения пароля используй новый пароль при следующем входе.
+        </p>
+    </div>
+
+    <div class="section" id="adminSection">
+        <h2>Управление администраторами</h2>
+
+        <p class="muted">
+            Доступно только владельцам проекта.
+            Здесь можно добавлять, изменять и удалять администраторов.
+        </p>
+
+        <a href="admins.html" class="back">Открыть управление администраторами →</a>
+    </div>
+
+    <div class="section">
+        <h2>Аккаунт</h2>
+
+        <p class="muted">
+            Завершить текущий сеанс работы с панелью управления.
+        </p>
+
+        <button class="danger" onclick="logout()">Выйти из аккаунта</button>
+    </div>
+
+    <p id="message"></p>
+
+</div>
+
+<script>
+let currentUser = null;
+let currentRole = null;
+
+async function init() {
+    const { data: { user }, error } =
+        await supabaseClient.auth.getUser();
+
+    if (error || !user) {
+        location.href = "admin.html";
+        return;
+    }
+
+    currentUser = user;
+
+    const { data: profile, error: profileError } =
+        await supabaseClient
+            .from("profiles")
+            .select("display_name, role")
+            .eq("user_id", user.id)
+            .single();
+
+    if (profileError || !profile) {
+        location.href = "admin.html";
+        return;
+    }
+
+    currentRole = profile.role;
+
+    document.getElementById("email").textContent =
+        "Email: " + user.email;
+
+    document.getElementById("displayName").value =
+        profile.display_name || "";
+
+    if (currentRole !== "owner") {
+        document.getElementById("adminSection").classList.add("hidden");
+    }
+}
+
+async function saveName() {
+    const name = document.getElementById("displayName")
+        .value.trim();
+
+    if (!name) {
+        showMessage("Введите имя.", true);
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("profiles")
+        .update({ display_name: name })
+        .eq("user_id", currentUser.id);
+
+    if (error) {
+        showMessage("Ошибка: " + error.message, true);
+        return;
+    }
+
+    showMessage("Имя успешно изменено!");
+}
+
+async function changePassword() {
+    const password =
+        document.getElementById("newPassword").value;
+
+    if (password.length < 8) {
+        showMessage("Пароль должен содержать минимум 8 символов.", true);
+        return;
+    }
+
+    const { error } = await supabaseClient.auth.updateUser({
+        password: password
+    });
+
+    if (error) {
+        showMessage("Ошибка: " + error.message, true);
+        return;
+    }
+
+    document.getElementById("newPassword").value = "";
+    showMessage("Пароль успешно изменён!");
+}
+
+async function logout() {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+        showMessage("Ошибка выхода: " + error.message, true);
+        return;
+    }
+
+    location.href = "admin.html";
+}
+
+function showMessage(message, isError = false) {
+    const element = document.getElementById("message");
+    element.textContent = message;
+    element.style.color = isError ? "#ff5555" : "#ff9d00";
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,97 @@
+/* ===== ROCK'N'ROLLA — BIRTHDAY THEME ===== */
+
+body.birthday-theme {
+    --bg: #171020;
+    --bg2: #281a35;
+    --amber: #ffca55;
+    --amber-soft: #ffdb83;
+    --yellow: #ffe7a8;
+    --red: #ff5c8a;
+    --green: #71d6a0;
+    --white: #fff8e8;
+    --grey: #c1b5c9;
+    --line: #493452;
+    --purple: #a18bea;
+
+    background: var(--bg) !important;
+    color: var(--white) !important;
+}
+
+body.birthday-theme h1,
+body.birthday-theme h2,
+body.birthday-theme h3,
+body.birthday-theme .sec-title,
+body.birthday-theme .quiz-logo {
+    color: var(--amber) !important;
+}
+
+body.birthday-theme .header,
+body.birthday-theme .footer,
+body.birthday-theme .news-header,
+body.birthday-theme .leaderboard-header {
+    background: var(--bg2) !important;
+    border-color: var(--red) !important;
+}
+
+body.birthday-theme .event-card,
+body.birthday-theme .fame-card,
+body.birthday-theme .news-card,
+body.birthday-theme .about,
+body.birthday-theme .cabinet,
+body.birthday-theme .screen,
+body.birthday-theme .leaderboard-card {
+    background-color: var(--bg2) !important;
+    border-color: var(--line) !important;
+    color: var(--white) !important;
+}
+
+body.birthday-theme .btn,
+body.birthday-theme button,
+body.birthday-theme .nav-contact-button {
+    border-color: var(--amber) !important;
+}
+
+body.birthday-theme .btn-primary {
+    background: var(--red) !important;
+    color: #ffffff !important;
+}
+
+body.birthday-theme a {
+    color: var(--amber);
+}
+
+body.birthday-theme .pixel,
+body.birthday-theme .blink {
+    color: var(--yellow) !important;
+}
+
+body.birthday-theme input,
+body.birthday-theme textarea,
+body.birthday-theme select {
+    background: var(--bg) !important;
+    color: var(--white) !important;
+    border-color: var(--line) !important;
+}
+
+body.birthday-theme .hero-grid {
+    background:
+        radial-gradient(60% 50% at 50% 20%, rgba(255,202,85,.20), transparent 70%),
+        linear-gradient(transparent 96%, rgba(255,202,85,.10) 96%) 0 0/100% 34px,
+        linear-gradient(90deg, transparent 96%, rgba(255,202,85,.08) 96%) 0 0/34px 100%;
+}
+
+/* Конфетти */
+#birthdayConfetti {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #birthdayConfetti {
+        display: none;
+    }
+}

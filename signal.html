@@ -1,0 +1,623 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCHIVE TERMINAL</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #020603;
+    color: #42ff75;
+    font-family: 'Share Tech Mono', monospace;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: repeating-linear-gradient(
+        transparent 0px,
+        rgba(0,0,0,.18) 1px,
+        transparent 3px
+    );
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+    background: rgba(50,255,100,.025);
+    animation: flicker .12s infinite;
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: .2; }
+    50% { opacity: .6; }
+}
+
+.terminal {
+    width: min(900px, 92%);
+    margin: 0 auto;
+    padding: 55px 0;
+    text-shadow: 0 0 7px #24ff5a;
+}
+
+.header {
+    color: #1b9e42;
+    border-bottom: 1px solid #17652d;
+    padding-bottom: 15px;
+    margin-bottom: 35px;
+    font-size: 14px;
+    letter-spacing: 2px;
+}
+
+.status {
+    color: #39d963;
+    margin-bottom: 35px;
+}
+
+.title {
+    font-size: clamp(25px, 5vw, 42px);
+    margin-bottom: 30px;
+    letter-spacing: 3px;
+}
+
+.message {
+    font-size: clamp(16px, 2.5vw, 19px);
+    line-height: 1.9;
+    white-space: pre-line;
+    min-height: 280px;
+}
+
+.cursor {
+    display: inline-block;
+    width: 10px;
+    height: 19px;
+    background: #42ff75;
+    vertical-align: middle;
+    animation: blink .8s steps(2) infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.damage {
+    margin-top: 45px;
+    color: #b5d9bd;
+    font-size: 13px;
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 35px;
+}
+
+button {
+    background: transparent;
+    border: 1px solid #269b48;
+    color: #42ff75;
+    padding: 12px 18px;
+    font: inherit;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #12351d;
+    box-shadow: 0 0 12px #1c9d43;
+}
+
+.footer {
+    margin-top: 65px;
+    color: #17652d;
+    font-size: 12px;
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 600px) {
+    .terminal {
+        padding-top: 30px;
+    }
+}
+
+/* ===== ACHIEVEMENT POPUP ===== */
+
+.rnr-achievement-notification {
+    position: fixed !important;
+    top: 25px !important;
+    right: 25px !important;
+    left: auto !important;
+    bottom: auto !important;
+    z-index: 999999 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+
+    width: min(380px, calc(100vw - 30px)) !important;
+    padding: 18px !important;
+
+    background: #020c05 !important;
+    border: 2px solid #42ff75 !important;
+    border-radius: 8px !important;
+
+    box-shadow: 0 0 20px #42ff75 !important;
+
+    color: #42ff75 !important;
+    opacity: 0 !important;
+    transform: translateX(120%) !important;
+
+    transition: opacity .4s ease, transform .4s ease !important;
+    pointer-events: none !important;
+    text-shadow: 0 0 7px #24ff5a !important;
+}
+
+.rnr-achievement-notification.show {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+}
+
+.rnr-achievement-notification img {
+    width: 65px !important;
+    height: 65px !important;
+    flex-shrink: 0 !important;
+    object-fit: contain !important;
+}
+
+.rnr-achievement-notification-content {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+}
+
+.rnr-achievement-notification-content span {
+    color: #42ff75 !important;
+    font-size: 14px !important;
+    font-family: 'Share Tech Mono', monospace !important;
+}
+
+.rnr-achievement-notification-content strong {
+    color: #fff !important;
+    font-size: 19px !important;
+    font-family: 'Share Tech Mono', monospace !important;
+}
+
+@media (max-width: 600px) {
+    .rnr-achievement-notification {
+        top: 15px !important;
+        right: 12px !important;
+        width: calc(100vw - 24px) !important;
+        padding: 13px !important;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<audio id="morseAudio" src="audio/morse-logo.mp3" preload="auto"></audio>
+
+<main class="terminal">
+
+    <div class="header">
+        ROCK'N'ROLLA NETWORK // UNKNOWN NODE
+    </div>
+
+    <div class="status" id="status">
+        SYSTEM OFFLINE
+    </div>
+
+    <div class="title">ARCHIVE TERMINAL</div>
+
+    <div class="controls" id="startControls">
+        <button id="startButton">[ CONNECT ]</button>
+        <button id="muteButton">[ SOUND: ON ]</button>
+    </div>
+
+
+<div id="archive" class="hidden">
+
+    <div class="title" id="archiveTitle">ЗАПИСЬ №001</div>
+
+    <div class="message" id="message"></div>
+    <span class="cursor" id="cursor"></span>
+
+    <div class="damage" id="damage">
+        FILE DAMAGED — 43%
+    </div>
+
+    <div class="controls">
+        <button id="morseButton">[ PLAY SIGNAL ]</button>
+        <button id="skipButton">[ FULL TEXT ]</button>
+    </div>
+
+
+    <div id="dateGate" class="hidden" style="margin-top: 35px;">
+        <p>ARCHIVE SECURITY CHECK</p>
+        <p>ENTER THE FOUNDING DATE:</p>
+
+        <div class="controls">
+            <input
+                type="text"
+                id="dateCode"
+                placeholder="DDMMYYYY"
+                maxlength="8"
+                autocomplete="off"
+                style="
+                    background: #020603;
+                    border: 1px solid #269b48;
+                    color: #42ff75;
+                    padding: 12px;
+                    font: inherit;
+                    width: 170px;
+                    outline: none;
+                "
+            >
+
+            <button id="dateCodeButton">[ UNLOCK ]</button>
+        </div>
+
+        <p id="dateError" style="color: #ff5555;"></p>
+    </div>
+
+<div id="rememberGate" class="hidden" style="margin-top: 35px;">
+    <p>ARCHIVE SECURITY CHECK</p>
+    <p>ENTER THE WORD FOUND IN THE GALLERY:</p>
+
+    <div class="controls">
+        <input
+            type="text"
+            id="rememberCode"
+            placeholder="PASSWORD"
+            maxlength="20"
+            autocomplete="off"
+            style="text-transform: uppercase;"
+        >
+        <button id="rememberCodeButton">[ UNLOCK ]</button>
+    </div>
+
+    <p id="rememberError" style="color: #ff5555;"></p>
+</div>
+
+
+</div>
+
+    <div class="footer">
+        CONNECTION UNSTABLE // 25.06
+    </div>
+
+</main>
+
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script>
+
+<script>
+
+
+const message1 = `Я пытался найти начало.
+
+Пересмотрел записи.
+Проверил даты.
+Перечитал старые сообщения.
+
+Но каждый раз возвращался к одному и тому же.
+
+Они называют это игрой.
+
+Они ошибаются.
+
+Если ты читаешь это, значит, ты тоже заметил.
+
+Ищи то, что никогда не менялось.`;
+
+const message2 = `Я знал, что кто-нибудь доберётся сюда.
+
+Первый замок был самым простым.
+
+Но теперь ты должен понять одну вещь.
+
+Не всё, что хранится в архиве, является прошлым.
+
+Некоторые записи ждут своего часа.
+
+Ищи дату, с которой всё началось.
+
+Она была здесь задолго до тебя.`;
+
+const message3 = `ДАТА ПОДТВЕРЖДЕНА.
+
+Ты нашёл начало.
+
+25 июня 2025 года.
+
+Именно тогда всё началось.
+
+Но дата — это только один из ключей.
+
+Ты уже слышал ответ.
+Ты видел его.
+И, возможно, даже не придал ему значения.
+
+Последний архив ждёт своего часа.
+
+НЕ ДОВЕРЯЙ ПОВЕРХНОСТИ.`;
+
+const message4 = `
+АРХИВ ПОЛНОСТЬЮ ВОССТАНОВЛЕН.
+
+Ты нашёл все фрагменты.
+Прошёл все проверки.
+Добрался до самого конца.
+
+Но остался последний вопрос.
+
+Кто всё это время оставлял тебе подсказки?
+
+Возможно, ответ был рядом с самого начала.
+
+СПАСИБО, ЧТО ИСКАЛ.
+
+ROCK'N'ROLLA
+END OF TRANSMISSION.
+`;
+
+
+
+const status = document.getElementById("status");
+const archive = document.getElementById("archive");
+const messageBox = document.getElementById("message");
+const cursor = document.getElementById("cursor");
+const audio = document.getElementById("morseAudio");
+const dateGate = document.getElementById("dateGate");
+
+let muted = false;
+let typingTimer = null;
+let position = 0;
+
+const savedStage = Number(localStorage.getItem("rnr_archive_stage") || 1);
+
+const archiveUnlocked =
+    sessionStorage.getItem("rnr_archive_unlocked") === "true" ||
+    savedStage >= 2;
+
+const archiveThirdUnlocked = savedStage >= 3;
+const archiveFourthUnlocked = savedStage >= 4;
+
+if (archiveUnlocked && savedStage < 2) {
+    localStorage.setItem("rnr_archive_stage", "2");
+}
+
+sessionStorage.removeItem("rnr_archive_unlocked");
+
+let currentMessage = archiveFourthUnlocked
+    ? message4
+    : archiveThirdUnlocked
+        ? message3
+        : archiveUnlocked
+            ? message2
+            : message1;
+
+document.getElementById("archiveTitle").textContent =
+    archiveFourthUnlocked ? "ЗАПИСЬ №004" :
+    archiveThirdUnlocked ? "ЗАПИСЬ №003" :
+    archiveUnlocked ? "ЗАПИСЬ №002" : "ЗАПИСЬ №001";
+
+document.getElementById("damage").textContent =
+    archiveFourthUnlocked ? "ARCHIVE LEVEL 04 — UNLOCKED" :
+    archiveThirdUnlocked ? "ARCHIVE DECRYPTED — 100%" :
+    archiveUnlocked ? "ARCHIVE FRAGMENT — 02" :
+    "FILE DAMAGED — 43%";
+
+status.textContent = archiveUnlocked
+    ? "ACCESS GRANTED"
+    : "SYSTEM OFFLINE";
+
+
+
+function typeText() {
+    if (position >= currentMessage.length) {
+        clearInterval(typingTimer);
+        cursor.classList.add("hidden");
+        return;
+    }
+
+    messageBox.textContent += currentMessage[position];
+    position++;
+
+    if (!muted && currentMessage[position - 1] !== "\n" && Math.random() > 0.65) {
+        playTypingBeep();
+    }
+}
+
+let audioContext;
+
+function playTypingBeep() {
+    try {
+        audioContext = audioContext || new (
+            window.AudioContext || window.webkitAudioContext
+        )();
+
+        if (audioContext.state === "suspended") {
+            audioContext.resume();
+        }
+
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.type = "square";
+        oscillator.frequency.value = 700 + Math.random() * 300;
+        gain.gain.value = 0.025;
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.025);
+    } catch (e) {}
+}
+
+document.getElementById("startButton").addEventListener("click", async () => {
+    if (window.RNRAchievements) {
+        window.RNRAchievements.unlock("unknown_secret");
+    }
+    document.getElementById("startControls").classList.add("hidden");
+
+    status.textContent = "CONNECTING...";
+
+    await new Promise(resolve => setTimeout(resolve, 900));
+
+    status.textContent = "CONNECTION ESTABLISHED";
+    archive.classList.remove("hidden");
+
+    if (archiveUnlocked && !archiveThirdUnlocked) {
+    dateGate.classList.remove("hidden");
+}
+
+if (archiveThirdUnlocked && !archiveFourthUnlocked) {
+    document.getElementById("rememberGate").classList.remove("hidden");
+}
+
+    if (!muted) playTypingBeep();
+
+    typingTimer = setInterval(typeText, 65);
+});
+
+document.getElementById("muteButton").addEventListener("click", () => {
+    muted = !muted;
+
+    document.getElementById("muteButton").textContent =
+        muted ? "[ SOUND: OFF ]" : "[ SOUND: ON ]";
+});
+
+document.getElementById("morseButton").addEventListener("click", async () => {
+    if (muted) return;
+
+    try {
+        audio.currentTime = 0;
+        await audio.play();
+    } catch (e) {
+        status.textContent = "SIGNAL ERROR";
+    }
+});
+
+document.getElementById("skipButton").addEventListener("click", () => {
+    clearInterval(typingTimer);
+    messageBox.textContent = currentMessage;
+    position = currentMessage.length;
+    cursor.classList.add("hidden");
+});
+
+// ===== ДОСТУП К ЗАПИСИ №003 =====
+
+document.getElementById("dateCodeButton").addEventListener("click", () => {
+    const enteredCode = document.getElementById("dateCode").value.trim();
+
+    if (enteredCode !== "25062025") {
+        document.getElementById("dateError").textContent =
+            "ACCESS DENIED — INVALID DATE";
+        return;
+    }
+
+    clearInterval(typingTimer);
+
+    localStorage.setItem("rnr_archive_stage", "3");
+
+    currentMessage = message3;
+    position = 0;
+
+    messageBox.textContent = "";
+    cursor.classList.remove("hidden");
+
+    document.getElementById("archiveTitle").textContent = "ЗАПИСЬ №003";
+    document.getElementById("damage").textContent =
+        "ARCHIVE DECRYPTED — 100%";
+
+    document.getElementById("dateGate").classList.add("hidden");
+
+document.getElementById("rememberGate").classList.remove("hidden");
+
+    status.textContent = "ARCHIVE DECRYPTED";
+
+    playTypingBeep();
+
+    typingTimer = setInterval(typeText, 65);
+});
+
+document.getElementById("dateCode").addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        document.getElementById("dateCodeButton").click();
+    }
+});
+
+// ===== PASSWORD: REMEMBER =====
+
+document.getElementById("rememberCodeButton").addEventListener("click", () => {
+    const enteredCode = document
+        .getElementById("rememberCode")
+        .value
+        .trim()
+        .toUpperCase();
+
+    if (enteredCode !== "REMEMBER") {
+        document.getElementById("rememberError").textContent =
+            "ACCESS DENIED — INVALID PASSWORD";
+        return;
+    }
+
+    clearInterval(typingTimer);
+
+    localStorage.setItem("rnr_archive_stage", "4");
+
+    if (window.RNRAchievements) {
+    window.RNRAchievements.unlock("underground_legend");
+}
+
+    currentMessage = message4;
+    position = 0;
+    messageBox.textContent = "";
+
+    cursor.classList.remove("hidden");
+
+    document.getElementById("archiveTitle").textContent = "ЗАПИСЬ №004";
+    document.getElementById("damage").textContent =
+        "ARCHIVE LEVEL 04 — UNLOCKED";
+
+    document.getElementById("rememberGate").classList.add("hidden");
+
+    status.textContent = "ARCHIVE COMPLETED";
+
+    playTypingBeep();
+    typingTimer = setInterval(typeText, 65);
+});
+
+document.getElementById("rememberCode").addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+        document.getElementById("rememberCodeButton").click();
+    }
+});
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,464 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #0b0b0b;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 22px 5%;
+            background: #151515;
+            border-bottom: 2px solid #ff9d00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        header h1 {
+            color: #ff9d00;
+            font-size: 20px;
+            margin: 0;
+        }
+
+        a {
+            color: #ffb340;
+            text-decoration: none;
+        }
+
+        main {
+            width: 90%;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+
+        .page-title {
+            margin-bottom: 30px;
+        }
+
+        .page-title h2 {
+            font-size: 30px;
+            margin-bottom: 8px;
+        }
+
+        .page-title p {
+            color: #aaa;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card, .panel {
+            background: #171717;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 22px;
+        }
+
+        .stat-card p {
+            color: #aaa;
+            margin: 0 0 14px;
+        }
+
+        .stat-card h3 {
+            color: #ff9d00;
+            font-size: 30px;
+            margin: 0;
+        }
+
+        .panel {
+            margin-bottom: 25px;
+        }
+
+        .panel h3 {
+            color: #ff9d00;
+            margin-top: 0;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 320px;
+        }
+
+        .popular-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .popular-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 13px;
+            background: #222;
+            border-radius: 7px;
+            overflow-wrap: anywhere;
+        }
+
+        .popular-item span:last-child {
+            color: #ff9d00;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .status {
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            padding: 11px 16px;
+            font-weight: bold;
+            background: #ff9d00;
+            color: #111;
+        }
+
+        @media (max-width: 800px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 500px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-wrap {
+                height: 250px;
+            }
+        }
+
+.period-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.period-header select {
+    background: #222;
+    color: #fff;
+    border: 1px solid #ff9d00;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>ROCK'N'ROLLA — СТАТИСТИКА</h1>
+    <a href="dashboard.html">← Назад в панель</a>
+</header>
+
+<main>
+    <div class="page-title">
+        <h2>Статистика сайта</h2>
+        <p>Посещаемость и активность пользователей</p>
+    </div>
+
+    <p class="status" id="status">Загружаем статистику...</p>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <p>Посещения сегодня</p>
+            <h3 id="todayVisits">—</h3>
+        </div>
+
+        <div class="stat-card">
+            <p>За последние 7 дней</p>
+            <h3 id="weekVisits">—</h3>
+        </div>
+
+        <div class="stat-card">
+            <p>За последние 30 дней</p>
+            <h3 id="monthVisits">—</h3>
+        </div>
+
+        <div class="stat-card">
+            <p>Уникальные браузеры за 30 дней</p>
+            <h3 id="uniqueVisitors">—</h3>
+        </div>
+    </div>
+
+    <section class="panel">
+    <div class="period-header">
+        <h3 id="chartTitle">Посещения за последние 7 дней</h3>
+        <select id="periodSelect" onchange="loadAnalytics()">
+            <option value="7">7 дней</option>
+            <option value="30" selected>30 дней</option>
+            <option value="90">90 дней</option>
+            <option value="all">Всё время</option>
+        </select>
+    </div>
+        <div class="chart-wrap">
+            <canvas id="visitsChart"></canvas>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h3>Популярные страницы за 30 дней</h3>
+        <div class="popular-list" id="popularPages">
+            Загружаем...
+        </div>
+    </section>
+
+    <button onclick="loadAnalytics()">Обновить статистику</button>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+
+<script>
+let visitsChart = null;
+
+async function loadAnalytics() {
+    const status = document.getElementById("status");
+    status.textContent = "Загружаем данные...";
+
+    try {
+        const { data: userData, error: userError } =
+            await supabaseClient.auth.getUser();
+
+        if (userError || !userData.user) {
+            window.location.href = "admin.html";
+            return;
+        }
+
+        const { data: profile, error: profileError } =
+            await supabaseClient
+                .from("profiles")
+                .select("role")
+                .eq("user_id", userData.user.id)
+                .single();
+
+        if (profileError || !profile ||
+            !["owner", "admin", "editor"].includes(profile.role)) {
+            window.location.href = "admin.html";
+            return;
+        }
+
+        const now = new Date();
+        const todayStart = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+        );
+
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - 6);
+
+        const monthStart = new Date(todayStart);
+        monthStart.setDate(monthStart.getDate() - 29);
+
+        let visits = [];
+let offset = 0;
+const pageSize = 1000;
+
+while (true) {
+    const { data, error } = await supabaseClient
+        .from("site_visits")
+        .select("page_path, session_id, visited_at")
+        .order("visited_at", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+
+    if (error) throw error;
+
+    visits = visits.concat(data || []);
+
+    if (!data || data.length < pageSize) break;
+    offset += pageSize;
+}
+
+const todayCount = visits.filter(v =>
+    new Date(v.visited_at) >= todayStart
+).length;
+
+const weekCount = visits.filter(v =>
+    new Date(v.visited_at) >= weekStart
+).length;
+
+const monthCount = visits.filter(v =>
+    new Date(v.visited_at) >= monthStart
+).length;
+
+const last30Days = visits.filter(v =>
+    new Date(v.visited_at) >= monthStart
+);
+
+const uniqueCount = new Set(
+    last30Days.map(v => v.session_id)
+).size;
+
+document.getElementById("todayVisits").textContent =
+    todayCount.toLocaleString("ru-RU");
+
+document.getElementById("weekVisits").textContent =
+    weekCount.toLocaleString("ru-RU");
+
+document.getElementById("monthVisits").textContent =
+    monthCount.toLocaleString("ru-RU");
+
+document.getElementById("uniqueVisitors").textContent =
+    uniqueCount.toLocaleString("ru-RU");
+
+renderChart(visits, todayStart);
+renderPopularPages(visits);
+
+        status.textContent = "Статистика успешно обновлена.";
+
+    } catch (error) {
+        console.error(error);
+        status.textContent = "Ошибка загрузки статистики: " + error.message;
+    }
+}
+
+function getPeriodVisits(visits) {
+    const period = document.getElementById("periodSelect").value;
+
+    if (period === "all") return visits;
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - Number(period) + 1);
+
+    return visits.filter(v =>
+        new Date(v.visited_at) >= start
+    );
+}
+
+function renderChart(visits) {
+    const filtered = getPeriodVisits(visits);
+    const grouped = {};
+
+    filtered.forEach(v => {
+        const date = new Date(v.visited_at).toLocaleDateString("ru-RU");
+        grouped[date] = (grouped[date] || 0) + 1;
+    });
+
+    const labels = Object.keys(grouped);
+    const values = Object.values(grouped);
+
+    const period = document.getElementById("periodSelect").value;
+    document.getElementById("chartTitle").textContent =
+        period === "all"
+            ? "Посещения за всё время"
+            : "Посещения за " + period + " дней";
+
+    if (visitsChart) visitsChart.destroy();
+
+    visitsChart = new Chart(
+        document.getElementById("visitsChart"),
+        {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Посещения",
+                    data: values,
+                    borderColor: "#ff9d00",
+                    backgroundColor: "rgba(255,157,0,0.12)",
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: "#fff" }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: "#aaa" },
+                        grid: { color: "#333" }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: "#aaa",
+                            precision: 0
+                        },
+                        grid: { color: "#333" }
+                    }
+                }
+            }
+        }
+    );
+}
+
+function renderPopularPages(visits) {
+    const container = document.getElementById("popularPages");
+    const counts = {};
+visits = getPeriodVisits(visits);
+    visits.forEach(visit => {
+        counts[visit.page_path] =
+            (counts[visit.page_path] || 0) + 1;
+    });
+
+    const sorted = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+    container.replaceChildren();
+
+    if (sorted.length === 0) {
+        container.textContent = "Пока посещений нет.";
+        return;
+    }
+
+    sorted.forEach(([page, count]) => {
+        const item = document.createElement("div");
+        item.className = "popular-item";
+
+        const name = document.createElement("span");
+        name.textContent = page;
+
+        const number = document.createElement("span");
+        number.textContent = count + " просмотров";
+
+        item.append(name, number);
+        container.appendChild(item);
+    });
+}
+
+loadAnalytics();
+</script>
+
+</body>
+</html>

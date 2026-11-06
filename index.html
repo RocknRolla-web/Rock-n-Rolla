@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rock'n'Rolla Quiz — квизы о культуре и музыке разных эпох и видеоиграм в Минске</title>
+<meta name="description" content="Rock'n'Rolla — аркадные квизы по року, кино и музыке в барах Минска. Ближайшие игры, зал славы, галерея и онлайн-квиз из 5 вопросов." />
+<meta property="og:title" content="Rock'n'Rolla Quiz — аркадные квизы в Минске" />
+<meta property="og:description" content="Квизы по року, кино и музыке в барах Минска. Проверь себя в онлайн-квизе." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="images/logo.png" type="image/png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="fire-decoration">
+    <img class="fire-image" src="images/fire.gif" alt="">
+    <img class="sparks-image" src="images/sparks.gif" alt="">
+</div>
+<div class="crt" aria-hidden="true"></div>
+
+<header class="header">
+  <div class="wrap header-inner">
+
+    <a class="brand" href="#home">
+    <span class="logo-secret-hint" aria-hidden="true">
+        YOU HAVE SEEN THIS BEFORE
+    </span>
+
+    <img src="images/logo.png" alt="Rock'n'Rolla" class="brand-img" data-fallback="text" />
+    <span class="brand-fallback">ROCK'N'ROLLA</span>
+</a>
+
+    <button class="burger" id="burger" aria-label="Меню" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <nav class="nav" id="nav">
+
+      <div class="nav-dropdown">
+        <button class="nav-main-button" id="mainMenuButton" aria-expanded="false">
+          ГЛАВНАЯ <span class="nav-arrow">▼</span>
+        </button>
+
+        <div class="nav-dropdown-content" id="mainDropdown">
+          <a href="#home">ГЛАВНАЯ</a>
+          <a href="#games">БЛИЖАЙШИЕ ИГРЫ</a>
+          
+          <a href="#quiz">ПРОБНАЯ ИГРА</a>
+          <a href="#about">О НАС</a>
+        </div>
+      </div>
+
+      <a href="news-public.html">НОВОСТИ</a>
+<a href="all-time.html">РЕЗУЛЬТАТЫ ПОСЛЕДНЕЙ ИГРЫ</a>
+<a href="gallery.html">ГАЛЕРЕЯ</a>
+
+<a href="my-achievements.html" class="nav-achievements">
+    <span class="achievement-icon"></span>
+    ДОСТИЖЕНИЯ
+</a>
+
+<button class="nav-contact-button" id="contactsButton">
+    КОНТАКТЫ
+</button>
+
+    </nav>
+  </div>
+</header>
+<main>
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="wrap hero-inner">
+      <img
+    src="images/main-title.png"
+    alt="ROCK'N'ROLLA"
+    class="hero-title-image reveal"
+>
+      <p class="hero-sub reveal">Играем в квизы по року, кино и музыке в барах Минска</p>
+      <a class="btn btn-primary btn-xl reveal" href="#games">ЗАПИСАТЬСЯ НА ИГРУ</a>
+      <p class="blink reveal">INSERT COIN — PRESS START</p>
+    </div>
+  </section>
+
+
+  <!-- GAMES -->
+  <section class="section" id="games">
+    <div class="wrap">
+      <h2 class="sec-title reveal">БЛИЖАЙШИЕ ИГРЫ</h2>
+      <div class="games" id="gamesGrid">
+    <p>ЗАГРУЗКА МЕРОПРИЯТИЙ...</p>
+</div>
+    </div>
+  </section>
+
+
+
+  <!-- QUIZ -->
+  <section class="section alt" id="quiz">
+    <div class="wrap">
+      <h2 class="sec-title reveal">ПРОБНАЯ ИГРА</h2>
+      <div class="cabinet reveal">
+        <div class="cabinet-top"><span></span><span>ARCADE MODE</span></div>
+
+        <div class="screen" id="quizStart">
+          <h3 class="quiz-logo">ROCK'N'ROLLA QUIZ</h3>
+          <p>Проверь, насколько хорошо ты знаешь<br />рок, кино и музыку.</p>
+          <p class="pixel amber"></p>
+          <button class="btn btn-primary btn-xl" id="startBtn">[ НАЧАТЬ ИГРУ ]</button>
+        </div>
+
+        <div class="screen hidden" id="quizGame">
+          <div class="quiz-head">
+            <span class="pixel" id="qCounter">QUESTION 1 / 5</span>
+            <span class="pixel amber" id="qScore">SCORE 0</span>
+          </div>
+          <div class="bar"><div class="bar-fill" id="qProgress"></div></div>
+          <h3 class="q-text" id="qText"></h3>
+          <div class="q-media" id="qMedia"></div>
+          <div class="answers" id="qAnswers"></div>
+          <div class="explain hidden" id="qExplain"></div>
+          <button class="btn btn-primary hidden" id="nextBtn">СЛЕДУЮЩИЙ ВОПРОС</button>
+        </div>
+
+        <div class="screen hidden" id="quizResult">
+          <h3 class="quiz-logo red">QUIZ COMPLETED</h3>
+          <p class="pixel">ТВОЙ РЕЗУЛЬТАТ</p>
+          <p class="result-score" id="resScore">0 / 5</p>
+          <p class="pixel amber" id="resTitle"></p>
+          <p id="resText"></p>
+          <button class="btn btn-primary btn-xl" id="restartBtn">[ ИГРАТЬ ЕЩЁ РАЗ ]</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="section" id="about">
+    <div class="wrap">
+      <h2 class="sec-title reveal">О НАС</h2>
+      <div class="about reveal">
+        <p class="pixel amber">INFO</p>
+        <p>Rock'n'Rolla </p>
+        <p>Играем в квизы по року, кино и многому другому в барах Минска</p>
+	<p>Работаем с 25.06.2025 года</p>
+        <a class="btn btn-ghost" href="https://t.me/rnr_quiz" target="_blank" rel="noopener">ПОСЕТИТЬ НАШ ТЕЛЕГРАМ</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-logo">
+    <img src="images/logo.png" alt="Rock'n'Rolla">
+</div>
+    <p class="foot-sub">КВИЗЫ ПО РОКУ • КИНО • МУЗЫКЕ<br />МИНСК</p>
+    <div class="foot-links">
+      <a href="https://t.me/rnr_quiz" target="_blank" rel="noopener">TELEGRAM</a>
+      <a href="https://www.instagram.com/rnr_quiz/" target="_blank" rel="noopener">INSTAGRAM</a>
+      <a href="https://www.tiktok.com/@rnr_quiz?_r=1&_t=ZS-9B2el8SLFX0" target="_blank" rel="noopener">TIKTOK</a>
+      <a href="https://www.threads.com/@rnr_quiz?xmt=AQG0F-AiRVEhv9N_EriTRJ1x7VBogE_VEDOSZHBeJAQi48s" rel="noopener">THREADS</a>
+    </div>
+    <p class="copy">© <span id="year"></span> ROCK'N'ROLLA QUIZ</p>
+
+    <button
+    id="hiddenAchievementButton"
+    type="button"
+    aria-label="Секретная кнопка"
+    style="
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        opacity: 0.03;
+        border: 0;
+        padding: 0;
+        background: #ff8a00;
+        cursor: pointer;
+    "
+></button>
+
+  </div>
+</footer>
+
+<div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="Просмотр фото">
+  <button class="lb-close" id="lbClose" aria-label="Закрыть">×</button>
+  <button class="lb-nav prev" id="lbPrev" aria-label="Назад">‹</button>
+  <img id="lbImg" src="" alt="" />
+  <button class="lb-nav next" id="lbNext" aria-label="Вперёд">›</button>
+</div>
+
+<!-- ОКНО КОНТАКТОВ -->
+<div class="contacts-modal" id="contactsModal">
+    <div class="contacts-modal-content">
+        <button class="contacts-close" id="contactsClose">×</button>
+
+        <div class="contacts-modal-label">ROCK'N'ROLLA</div>
+
+        <h2>ЕСТЬ ВОПРОСЫ?</h2>
+
+        <p>
+            Хочешь узнать больше о наших играх, предложить сотрудничество
+            или просто пообщаться?
+        </p>
+
+        <p>Напиши нам в Instagram!</p>
+
+	<a
+            href="https://www.instagram.com/rnr_quiz/"
+            target="_blank"
+            rel="noopener"
+            class="contacts-instagram"
+        >
+            ПЕРЕЙТИ В INSTAGRAM
+        </a>
+	
+	<p>
+            Так же можешь посетить наши другие соц сети!
+        </p>
+
+	<a
+            href="https://t.me/rnr_quiz"
+            rel="noopener"
+            class="contacts-instagram"
+        >
+            ПЕРЕЙТИ В TELEGRAM
+        </a>
+
+	<a
+            href="https://www.tiktok.com/@rnr_quiz?_r=1&_t=ZS-9B2el8SLFX0"
+            class="contacts-instagram"
+        >
+            ПЕРЕЙТИ В TIKTOK
+        </a>
+
+	<a
+            href="https://www.threads.com/@rnr_quiz?xmt=AQG0F-AiRVEhv9N_EriTRJ1x7VBogE_VEDOSZHBeJAQi48s"
+	    class="contacts-instagram"
+        >
+            ПЕРЕЙТИ В THREADS
+        </a>
+
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script>
+<script src="questions.js?v=2"></script>
+<script src="quiz.js?v=2"></script>
+<script src="script.js?v=2"></script>
+<script src="js/public-events.js?v=3"></script>
+<script src="js/public-fame.js"></script>
+<script>
+// DROPDOWN MENU
+
+const mainMenuButton = document.getElementById("mainMenuButton");
+const mainDropdown = document.getElementById("mainDropdown");
+
+mainMenuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    mainDropdown.classList.toggle("open");
+
+    mainMenuButton.setAttribute(
+        "aria-expanded",
+        mainDropdown.classList.contains("open")
+    );
+});
+
+document.addEventListener("click", (event) => {
+    if (!event.target.closest(".nav-dropdown")) {
+        mainDropdown.classList.remove("open");
+        mainMenuButton.setAttribute("aria-expanded", "false");
+    }
+});
+
+// CONTACTS MODAL
+
+const contactsButton = document.getElementById("contactsButton");
+const contactsModal = document.getElementById("contactsModal");
+const contactsClose = document.getElementById("contactsClose");
+
+contactsButton.addEventListener("click", () => {
+    contactsModal.classList.add("open");
+});
+
+contactsClose.addEventListener("click", () => {
+    contactsModal.classList.remove("open");
+});
+
+contactsModal.addEventListener("click", (event) => {
+    if (event.target === contactsModal) {
+        contactsModal.classList.remove("open");
+    }
+});
+
+// CLOSE WITH ESC
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+        contactsModal.classList.remove("open");
+        mainDropdown.classList.remove("open");
+        mainMenuButton.setAttribute("aria-expanded", "false");
+    }
+});
+
+// ===== ДОСТИЖЕНИЕ: НАВЯЗЧИВАЯ ИДЕЯ =====
+
+const brandLogo = document.querySelector(".header .brand");
+
+if (brandLogo) {
+
+// ===== ARG: 15 НАЖАТИЙ НА ЛОГОТИП =====
+
+(function () {
+    const logo = document.querySelector(".header .brand");
+    if (!logo) return;
+
+    let secretClicks = 0;
+    let messageShown = false;
+
+    logo.addEventListener("click", function () {
+        secretClicks++;
+
+        if (secretClicks >= 15 && !messageShown) {
+            messageShown = true;
+
+            const overlay = document.createElement("div");
+
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                z-index: 999998;
+                background: rgba(0, 0, 0, 0.94);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                font-family: monospace;
+            `;
+
+            overlay.innerHTML = `
+                <div style="
+                    max-width: 600px;
+                    width: 100%;
+                    border: 1px solid #42ff75;
+                    padding: 30px;
+                    color: #42ff75;
+                    background: #020603;
+                    box-shadow: 0 0 25px rgba(66,255,117,.2);
+                    line-height: 1.8;
+                    text-shadow: 0 0 8px #42ff75;
+                ">
+                    <div style="color:#238e43;margin-bottom:25px;">
+                        UNKNOWN TRANSMISSION // 001
+                    </div>
+
+                    <div>YOU FOUND THE FIRST SIGN.</div>
+                    <br>
+                    <div>SOME SECRETS ARE NOT MEANT</div>
+                    <div>TO BE KEPT FOREVER.</div>
+                    <br>
+                    <div style="font-size:13px;">
+                        OPEN YOUR SECRETS RNR.
+                    </div>
+
+                    <button id="closeSecretMessage" style="
+                        margin-top:30px;
+                        padding:10px 18px;
+                        background:transparent;
+                        border:1px solid #42ff75;
+                        color:#42ff75;
+                        font:inherit;
+                        cursor:pointer;
+                    ">[ CLOSE ]</button>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            document.getElementById("closeSecretMessage")
+                .addEventListener("click", function () {
+                    overlay.remove();
+                });
+        }
+    });
+})();
+
+    brandLogo.addEventListener("click", function () {
+        let clicks = Number(localStorage.getItem("rnr_logo_clicks_v1") || 0);
+
+        clicks++;
+
+        localStorage.setItem("rnr_logo_clicks_v1", clicks);
+
+        if (clicks >= 10) {
+            window.RNRAchievements.unlock("obsessive_logo");
+            localStorage.removeItem("rnr_logo_clicks_v1");
+        }
+    });
+}
+
+// ===== ДОСТИЖЕНИЕ: ЗНАЮЩИЙ ПАРОЛЬ =====
+
+let secretPassword = "ROCKNROLLA";
+let passwordInput = "";
+
+document.addEventListener("keydown", function (event) {
+    // Не отслеживаем ввод в полях и редакторах
+    if (
+        event.target.matches("input, textarea, select") ||
+        event.target.isContentEditable
+    ) {
+        passwordInput = "";
+        return;
+    }
+
+    // Учитываем только буквенные нажатия
+    if (event.key.length !== 1 || !/[a-z]/i.test(event.key)) {
+        return;
+    }
+
+    passwordInput += event.key.toUpperCase();
+
+    // Оставляем только последние 9 символов
+    passwordInput = passwordInput.slice(-secretPassword.length);
+
+    if (passwordInput === secretPassword) {
+        window.RNRAchievements.unlock("password_knower");
+        passwordInput = "";
+    }
+});
+
+// ===== ДОСТИЖЕНИЕ: НЕОЧЕВИДНАЯ КНОПКА =====
+
+const hiddenButton = document.getElementById("hiddenAchievementButton");
+
+if (hiddenButton) {
+    hiddenButton.addEventListener("click", function () {
+        window.RNRAchievements.unlock("hidden_button");
+    });
+}
+
+// ===== ДОСТИЖЕНИЕ: СЕКРЕТНЫЙ ГОСТЬ =====
+
+let secretGuestStep = 0;
+
+// Шаг 1 — открыть контакты
+contactsButton.addEventListener("click", function () {
+    if (secretGuestStep === 0) {
+        secretGuestStep = 1;
+    } else {
+        secretGuestStep = 0;
+    }
+});
+
+// Шаг 2 — закрыть контакты крестиком
+contactsClose.addEventListener("click", function () {
+    if (secretGuestStep === 1) {
+        secretGuestStep = 2;
+    } else {
+        secretGuestStep = 0;
+    }
+});
+
+// Шаг 3 — начать пробную игру
+document.getElementById("startBtn").addEventListener("click", function () {
+    if (secretGuestStep === 2) {
+        window.RNRAchievements.unlock("secret_guest");
+    }
+
+    secretGuestStep = 0;
+});
+
+
+
+
+// ===== СЕКРЕТНАЯ КОМАНДА: OPEN YOUR SECRETS RNR =====
+
+(function () {
+    const secretPhrase = "OPEN YOUR SECRETS RNR"
+        .replace(/[^A-Z]/gi, "")
+        .toUpperCase();
+
+    let typedPhrase = "";
+    let redirectStarted = false;
+
+    document.addEventListener("keydown", function (event) {
+
+        if (
+            event.target.matches("input, textarea, select") ||
+            event.target.isContentEditable
+        ) {
+            typedPhrase = "";
+            return;
+        }
+
+        if (event.key === "Backspace" || event.key === "Escape") {
+            typedPhrase = "";
+            return;
+        }
+
+        if (!/^[a-z]$/i.test(event.key)) return;
+
+        typedPhrase += event.key.toUpperCase();
+        typedPhrase = typedPhrase.slice(-secretPhrase.length);
+
+        if (typedPhrase === secretPhrase && !redirectStarted) {
+            redirectStarted = true;
+
+            // РАЗБЛОКИРУЕМ ВТОРУЮ ЗАПИСЬ
+            sessionStorage.setItem("rnr_archive_unlocked", "true");
+
+            const overlay = document.createElement("div");
+
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                z-index: 999999;
+                background: #020603;
+                color: #42ff75;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-direction: column;
+                font-family: "Press Start 2P", monospace;
+                text-align: center;
+                text-shadow: 0 0 12px #42ff75;
+                font-size: clamp(18px, 4vw, 30px);
+                letter-spacing: 3px;
+            `;
+
+            overlay.innerHTML = `
+                <div>ACCESS GRANTED</div>
+                <div style="font-size:14px;margin-top:20px;">
+                    CONNECTING TO UNKNOWN NODE...
+                </div>
+                <div style="margin-top:25px;">_</div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            setTimeout(function () {
+                window.location.href = "signal.html";
+            }, 2200);
+        }
+    });
+})();
+
+</script>
+</body>
+</html>

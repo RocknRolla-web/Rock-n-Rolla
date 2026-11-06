@@ -1,0 +1,133 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Новости — Rock'n'Rolla</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+
+
+</head>
+
+<body class="news-page">
+
+<header class="news-header">
+    <h1 class="news-brand">ROCK'N'ROLLA</h1>
+    <a href="index.html" class="news-back">← На главную</a>
+</header>
+
+<main class="news-main">
+    <div class="news-page-title">
+    <h2>Новости</h2>
+    <p>Последние события и обновления Rock'n'Rolla</p>
+</div>
+
+    <div class="news-grid" id="newsGrid">
+        <div class="news-loading">Загружаем новости...</div>
+    </div>
+</main>
+
+<footer>
+    © Rock'n'Rolla
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/theme.js"></script>
+
+<script>
+const newsGrid = document.getElementById("newsGrid");
+
+async function loadNews() {
+    const { data, error } = await supabaseClient
+        .from("news")
+        .select("id, title, content, cover_image_url, video_url, created_at")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        newsGrid.textContent = "Не удалось загрузить новости.";
+        console.error("Ошибка загрузки новостей:", error);
+        return;
+    }
+
+    newsGrid.replaceChildren();
+
+    if (!data || data.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "news-empty";
+        empty.textContent = "Пока новостей нет. Загляните сюда позже!";
+        newsGrid.appendChild(empty);
+        return;
+    }
+
+    data.forEach(news => {
+        const card = document.createElement("article");
+        card.className = "news-card";
+
+        // Обложка новости
+        if (news.cover_image_url) {
+            const image = document.createElement("img");
+
+            image.className = "news-image";
+            image.src = news.cover_image_url;
+            image.alt = news.title;
+            image.loading = "lazy";
+
+            image.onerror = function () {
+                console.error("Не удалось загрузить обложку:", news.cover_image_url);
+                image.remove();
+            };
+
+            card.appendChild(image);
+        }
+
+        const body = document.createElement("div");
+        body.className = "news-body";
+
+        const date = document.createElement("div");
+        date.className = "news-date";
+        date.textContent = new Date(news.created_at)
+            .toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
+
+        const title = document.createElement("h3");
+        title.className = "news-title";
+        title.textContent = news.title;
+
+        const content = document.createElement("p");
+        content.className = "news-content";
+        content.textContent = news.content;
+
+        body.append(date, title, content);
+        card.appendChild(body);
+
+        card.style.cursor = "pointer";
+
+        card.addEventListener("click", () => {
+            window.location.href = "news-detail.html?id=" +
+                encodeURIComponent(news.id);
+        });
+
+        newsGrid.appendChild(card);
+    });
+}
+
+loadNews();
+</script>
+
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,451 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock'n'Rolla — Admin</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #090909;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 420px;
+            padding: 35px;
+            border: 2px solid #ff9d00;
+            border-radius: 12px;
+            background: #151515;
+            text-align: center;
+        }
+
+        h1 { color: #ff9d00; margin-bottom: 10px; }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            margin-top: 15px;
+            background: #252525;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: white;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 20px;
+            background: #ff9d00;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover { background: #ffc04d; }
+
+        button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        #message {
+            margin-top: 15px;
+            color: #ff7777;
+            font-size: 14px;
+            overflow-wrap: anywhere;
+        }
+
+        #qrCode {
+            width: 220px;
+            max-width: 100%;
+            margin: 20px auto;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .hidden { display: none; }
+
+        .hint {
+            color: #bbb;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .code-input {
+            text-align: center;
+            letter-spacing: 8px;
+            font-size: 24px;
+        }
+
+        .secondary {
+            background: #333;
+            color: white;
+        }
+
+        .secondary:hover { background: #444; }
+    </style>
+</head>
+
+<body>
+
+<div class="login-box">
+    <h1>ROCK'N'ROLLA</h1>
+    <p>Панель администратора</p>
+
+    <!-- Вход по паролю -->
+    <form id="loginForm">
+        <input
+            type="email"
+            id="email"
+            placeholder="Электронная почта"
+            required
+        >
+
+        <input
+            type="password"
+            id="password"
+            placeholder="Пароль"
+            required
+        >
+
+        <button type="submit" id="loginButton">ВОЙТИ</button>
+    </form>
+
+    <!-- Настройка 2FA -->
+    <div id="setupSection" class="hidden">
+        <h2>Настройка 2FA</h2>
+
+        <p class="hint">
+            Отсканируй QR-код в приложении-аутентификаторе.
+            Затем введи полученный шестизначный код.
+        </p>
+
+        <img id="qrCode" alt="QR-код для настройки 2FA">
+
+        <p class="hint">Если QR-код не сканируется, используй секретный ключ:</p>
+        <p id="secretKey" style="overflow-wrap:anywhere;color:#ffbd4a;"></p>
+
+        <input
+            type="text"
+            id="setupCode"
+            class="code-input"
+            placeholder="000000"
+            inputmode="numeric"
+            maxlength="6"
+        >
+
+        <button id="enableButton" type="button">
+            ПОДТВЕРДИТЬ И ВКЛЮЧИТЬ 2FA
+        </button>
+    </div>
+
+    <!-- Проверка кода при обычном входе -->
+    <div id="verifySection" class="hidden">
+        <h2>Подтверждение входа</h2>
+
+        <p class="hint">
+            Введи шестизначный код из приложения-аутентификатора.
+        </p>
+
+        <input
+            type="text"
+            id="loginCode"
+            class="code-input"
+            placeholder="000000"
+            inputmode="numeric"
+            maxlength="6"
+        >
+
+        <button id="verifyButton" type="button">
+            ПОДТВЕРДИТЬ ВХОД
+        </button>
+    </div>
+
+    <div id="message"></div>
+
+    <button id="logoutButton" class="secondary hidden" type="button">
+        ОТМЕНИТЬ ВХОД
+    </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+
+<script>
+    const form = document.getElementById("loginForm");
+    const message = document.getElementById("message");
+
+    const setupSection = document.getElementById("setupSection");
+    const verifySection = document.getElementById("verifySection");
+    const logoutButton = document.getElementById("logoutButton");
+
+    let currentFactorId = null;
+
+    function showMessage(text, isError = true) {
+        message.textContent = text;
+        message.style.color = isError ? "#ff7777" : "#8ee89a";
+    }
+
+    function hideAllSections() {
+        form.classList.add("hidden");
+        setupSection.classList.add("hidden");
+        verifySection.classList.add("hidden");
+        logoutButton.classList.remove("hidden");
+    }
+
+    function showLogin() {
+        form.classList.remove("hidden");
+        setupSection.classList.add("hidden");
+        verifySection.classList.add("hidden");
+        logoutButton.classList.add("hidden");
+    }
+
+    async function checkAdminRole() {
+        const { data: userData, error: userError } =
+            await supabaseClient.auth.getUser();
+
+        if (userError || !userData.user) {
+            throw new Error("Не удалось получить пользователя.");
+        }
+
+        const { data: profile, error } = await supabaseClient
+            .from("profiles")
+            .select("role")
+            .eq("user_id", userData.user.id)
+            .single();
+
+        if (error || !profile ||
+            !["owner", "admin", "editor"].includes(profile.role)) {
+            throw new Error("У этого аккаунта нет доступа к админ-панели.");
+        }
+    }
+
+    async function goToDashboard() {
+        const { data, error } =
+            await supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
+
+        if (error) throw error;
+
+        if (data.currentLevel !== "aal2") {
+            throw new Error("Второй фактор не подтверждён.");
+        }
+
+        window.location.href = "dashboard.html";
+    }
+
+    async function startSetup() {
+        hideAllSections();
+        setupSection.classList.remove("hidden");
+
+        showMessage("Создаём QR-код...", false);
+
+        const { data: factors, error: factorsError } =
+            await supabaseClient.auth.mfa.listFactors();
+
+        if (factorsError) throw factorsError;
+
+        // Удаляем незавершённую предыдущую настройку, если она есть
+        const unverified = factors.totp.find(
+            factor => factor.status === "unverified"
+        );
+
+        if (unverified) {
+            const { error } = await supabaseClient.auth.mfa.unenroll({
+                factorId: unverified.id
+            });
+
+            if (error) throw error;
+        }
+
+        const { data, error } = await supabaseClient.auth.mfa.enroll({
+            factorType: "totp",
+            friendlyName: "Rock'n'Rolla Authenticator"
+        });
+
+        if (error) throw error;
+
+        currentFactorId = data.id;
+
+        document.getElementById("qrCode").src = data.totp.qr_code;
+        document.getElementById("secretKey").textContent = data.totp.secret;
+
+        showMessage("Отсканируй QR-код и введи код из приложения.", false);
+    }
+
+    async function startVerification() {
+        const { data: factors, error } =
+            await supabaseClient.auth.mfa.listFactors();
+
+        if (error) throw error;
+
+        const verifiedFactor = factors.totp.find(
+            factor => factor.status === "verified"
+        );
+
+        if (!verifiedFactor) {
+            await startSetup();
+            return;
+        }
+
+        currentFactorId = verifiedFactor.id;
+
+        hideAllSections();
+        verifySection.classList.remove("hidden");
+
+        showMessage("Введи код из приложения.", false);
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const button = document.getElementById("loginButton");
+        button.disabled = true;
+        showMessage("Проверяем данные...", false);
+
+        try {
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            const { error } =
+                await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+            if (error) throw error;
+
+            await checkAdminRole();
+
+            const { data: assurance, error: assuranceError } =
+                await supabaseClient.auth.mfa.getAuthenticatorAssuranceLevel();
+
+            if (assuranceError) throw assuranceError;
+
+            if (assurance.currentLevel === "aal2") {
+                await goToDashboard();
+                return;
+            }
+
+            if (assurance.nextLevel === "aal2") {
+                await startVerification();
+            } else {
+                await startSetup();
+            }
+
+        } catch (error) {
+            await supabaseClient.auth.signOut();
+            showLogin();
+            showMessage("Ошибка: " + error.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    // Подтверждение первоначальной настройки 2FA
+    document.getElementById("enableButton").addEventListener("click", async () => {
+        const button = document.getElementById("enableButton");
+        const code = document.getElementById("setupCode").value.trim();
+
+        if (!/^\d{6}$/.test(code)) {
+            showMessage("Введи шестизначный код.");
+            return;
+        }
+
+        button.disabled = true;
+        showMessage("Проверяем код...", false);
+
+        try {
+            const { data: challenge, error: challengeError } =
+                await supabaseClient.auth.mfa.challenge({
+                    factorId: currentFactorId
+                });
+
+            if (challengeError) throw challengeError;
+
+            const { error: verifyError } =
+                await supabaseClient.auth.mfa.verify({
+                    factorId: currentFactorId,
+                    challengeId: challenge.id,
+                    code
+                });
+
+            if (verifyError) throw verifyError;
+
+            showMessage("2FA успешно подключена! Открываем панель...", false);
+
+            await goToDashboard();
+
+        } catch (error) {
+            showMessage("Ошибка: " + error.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    // Подтверждение обычного входа
+    document.getElementById("verifyButton").addEventListener("click", async () => {
+        const button = document.getElementById("verifyButton");
+        const code = document.getElementById("loginCode").value.trim();
+
+        if (!/^\d{6}$/.test(code)) {
+            showMessage("Введи шестизначный код.");
+            return;
+        }
+
+        button.disabled = true;
+        showMessage("Проверяем код...", false);
+
+        try {
+            const { data: challenge, error: challengeError } =
+                await supabaseClient.auth.mfa.challenge({
+                    factorId: currentFactorId
+                });
+
+            if (challengeError) throw challengeError;
+
+            const { error: verifyError } =
+                await supabaseClient.auth.mfa.verify({
+                    factorId: currentFactorId,
+                    challengeId: challenge.id,
+                    code
+                });
+
+            if (verifyError) throw verifyError;
+
+            showMessage("Вход подтверждён!", false);
+            await goToDashboard();
+
+        } catch (error) {
+            showMessage("Неверный код или ошибка: " + error.message);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    logoutButton.addEventListener("click", async () => {
+        await supabaseClient.auth.signOut();
+        currentFactorId = null;
+        showLogin();
+        showMessage("Вход отменён.", false);
+    });
+</script>
+
+</body>
+</html>

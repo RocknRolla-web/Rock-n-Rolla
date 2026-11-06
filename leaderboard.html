@@ -1,0 +1,426 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Таблица лидеров — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        h1, h2 { color: #ff9d00; }
+
+        a { color: #ffb52e; text-decoration: none; }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: #1c1c1c;
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            background: #292929;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+        }
+
+        label { display: block; margin-top: 10px; }
+
+        button {
+            padding: 11px 17px;
+            border: 0;
+            border-radius: 6px;
+            background: #ff9d00;
+            color: #111;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+
+        button:hover { background: #ffc04d; }
+
+        button:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        button.delete {
+            background: #a83232;
+            color: white;
+        }
+
+        .entry {
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 18px;
+            margin-top: 15px;
+        }
+
+        .muted { color: #aaa; }
+        .status { color: #ffb52e; }
+
+        #message { margin: 15px 0; }
+
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .panel { padding: 16px; }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="top">
+        <div>
+            <h1>Таблица лидеров</h1>
+            <a href="dashboard.html">← Вернуться в панель</a>
+        </div>
+        <button id="logoutBtn">Выйти</button>
+    </div>
+
+    <div class="panel">
+        <h2 id="formTitle">Добавить результат</h2>
+
+        <form id="entryForm">
+
+            <label for="teamSelect">Команда</label>
+            <select id="teamSelect" required>
+                <option value="">Загрузка команд...</option>
+            </select>
+
+            <label for="points">Количество очков</label>
+            <input id="points" type="number" min="0" step="1" required>
+
+            <label for="place">Место в таблице</label>
+            <input id="place" type="number" min="1" step="1" required>
+
+            <label for="tableNumber">Номер стола</label>
+            <input id="tableNumber" type="number" min="1" step="1">
+
+
+            <label>
+                <input id="published" type="checkbox" checked
+                       style="width:auto;margin-right:8px;">
+                Опубликовать результат
+            </label>
+
+            <button type="submit" id="saveBtn">Добавить результат</button>
+            <button type="button" id="cancelBtn" hidden>Отмена</button>
+        </form>
+
+        <p id="message"></p>
+    </div>
+
+    <div class="panel">
+        <h2>Все результаты</h2>
+        <div id="entriesList">Загрузка...</div>
+    </div>
+
+</div>
+
+<script>
+const form = document.getElementById("entryForm");
+const list = document.getElementById("entriesList");
+const message = document.getElementById("message");
+
+const teamSelect = document.getElementById("teamSelect");
+const pointsInput = document.getElementById("points");
+const placeInput = document.getElementById("place");
+const tableNumberInput = document.getElementById("tableNumber");
+
+const publishedInput = document.getElementById("published");
+
+let currentUser = null;
+let editingId = null;
+let teams = [];
+
+async function checkAccess() {
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    currentUser = data.user;
+
+    const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (
+        profileError ||
+        !profile ||
+        !["owner", "admin", "editor"].includes(profile.role)
+    ) {
+        await supabaseClient.auth.signOut();
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    return true;
+}
+
+async function loadTeams() {
+    const { data, error } = await supabaseClient
+        .from("teams")
+        .select("id, name")
+        .order("name", { ascending: true });
+
+    if (error) throw error;
+
+    teams = data || [];
+    teamSelect.replaceChildren();
+
+    const firstOption = document.createElement("option");
+    firstOption.value = "";
+    firstOption.textContent = "Выбери команду";
+    teamSelect.appendChild(firstOption);
+
+    teams.forEach(team => {
+        const option = document.createElement("option");
+        option.value = team.id;
+        option.textContent = team.name;
+        teamSelect.appendChild(option);
+    });
+
+    if (teams.length === 0) {
+        firstOption.textContent = "Сначала добавь команду";
+    }
+}
+
+async function loadEntries() {
+    list.textContent = "Загрузка результатов...";
+
+    const { data, error } = await supabaseClient
+        .from("leaderboard_entries")
+        .select("*")
+        .order("season", { ascending: false })
+        .order("place", { ascending: true });
+
+    if (error) {
+        console.error(error);
+        list.textContent = "Ошибка загрузки: " + error.message;
+        return;
+    }
+
+    list.replaceChildren();
+
+    if (!data || data.length === 0) {
+        list.textContent = "Результатов пока нет.";
+        return;
+    }
+
+    data.forEach(entry => {
+        const card = document.createElement("div");
+        card.className = "entry";
+
+        const team = teams.find(item => item.id === entry.team_id);
+
+        const title = document.createElement("h3");
+        title.textContent = team ? team.name : "Неизвестная команда";
+
+        const details = document.createElement("div");
+details.textContent =
+    "Место: " + (entry.place ?? "—") +
+    " | Очки: " + (entry.points ?? "—");
+
+        const table = document.createElement("p");
+        table.textContent = "Стол: " +
+            (entry.table_number ?? "Не указан");
+
+        const status = document.createElement("p");
+        status.className = "status";
+        status.textContent = entry.is_published
+            ? "Опубликовано"
+            : "Не опубликовано";
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Редактировать";
+        editBtn.addEventListener("click", () => editEntry(entry));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Удалить";
+        deleteBtn.className = "delete";
+        deleteBtn.addEventListener("click", () => deleteEntry(entry.id));
+
+        card.append(title, details, table, status, editBtn, deleteBtn);
+        list.appendChild(card);
+    });
+}
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    message.textContent = "Сохранение...";
+
+    try {
+        const teamId = teamSelect.value;
+        const points = Number(pointsInput.value);
+        const place = Number(placeInput.value);
+        const tableNumber = tableNumberInput.value === ""
+            ? null
+            : Number(tableNumberInput.value);
+if (!teamId) throw new Error("Выбери команду.");
+
+        if (!Number.isInteger(points) || points < 0) {
+            throw new Error("Очки должны быть целым числом не меньше нуля.");
+        }
+
+        if (!Number.isInteger(place) || place < 1) {
+            throw new Error("Место должно быть целым числом от 1.");
+        }
+
+        if (
+            tableNumber !== null &&
+            (!Number.isInteger(tableNumber) || tableNumber < 1)
+        ) {
+            throw new Error("Номер стола должен быть положительным целым числом.");
+        }
+
+        const entryData = {
+            team_id: teamId,
+            points: points,
+            place: place,
+            table_number: tableNumber,
+            season: "Общий зачёт",
+            is_published: publishedInput.checked
+        };
+
+        let result;
+
+        if (editingId) {
+            result = await supabaseClient
+                .from("leaderboard_entries")
+                .update(entryData)
+                .eq("id", editingId);
+        } else {
+            result = await supabaseClient
+                .from("leaderboard_entries")
+                .insert(entryData);
+        }
+
+        if (result.error) throw result.error;
+
+        message.textContent = "Результат успешно сохранён!";
+        resetForm();
+        await loadEntries();
+
+    } catch (error) {
+        console.error(error);
+        message.textContent = "Ошибка: " + error.message;
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
+
+function editEntry(entry) {
+    editingId = entry.id;
+
+    teamSelect.value = entry.team_id || "";
+    pointsInput.value = entry.points ?? 0;
+    placeInput.value = entry.place ?? 1;
+    tableNumberInput.value = entry.table_number ?? "";
+    
+    publishedInput.checked = entry.is_published;
+
+    document.getElementById("formTitle").textContent =
+        "Редактировать результат";
+    document.getElementById("saveBtn").textContent =
+        "Сохранить изменения";
+    document.getElementById("cancelBtn").hidden = false;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetForm() {
+    editingId = null;
+    form.reset();
+
+    document.getElementById("formTitle").textContent =
+        "Добавить результат";
+    document.getElementById("saveBtn").textContent =
+        "Добавить результат";
+    document.getElementById("cancelBtn").hidden = true;
+}
+
+document.getElementById("cancelBtn").addEventListener("click", () => {
+    resetForm();
+    message.textContent = "";
+});
+
+async function deleteEntry(id) {
+    if (!confirm("Точно удалить этот результат?")) return;
+
+    const { error } = await supabaseClient
+        .from("leaderboard_entries")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        message.textContent = "Ошибка удаления: " + error.message;
+        return;
+    }
+
+    message.textContent = "Результат удалён.";
+    await loadEntries();
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "admin.html";
+});
+
+(async function init() {
+    const allowed = await checkAccess();
+
+    if (!allowed) return;
+
+    try {
+        await loadTeams();
+        await loadEntries();
+    } catch (error) {
+        console.error(error);
+        message.textContent = "Ошибка загрузки: " + error.message;
+    }
+})();
+</script>
+</body>
+</html>

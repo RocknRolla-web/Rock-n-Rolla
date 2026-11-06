@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock'n'Rolla — Dashboard</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #0b0b0b;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 14px 5%;
+            background: #151515;
+            border-bottom: 2px solid #ff9d00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-button {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-button img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .logout {
+            background: #ff9d00;
+            color: #111;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 18px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        main {
+            width: 90%;
+            max-width: 1100px;
+            margin: 40px auto;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .welcome {
+            grid-column: 1 / -1;
+            margin-bottom: 10px;
+        }
+
+        .welcome h2 {
+            font-size: 30px;
+            margin-bottom: 8px;
+        }
+
+        .welcome p { color: #aaa; }
+
+        .card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+            min-width: 0;
+            min-height: 150px;
+            padding: 25px;
+            background: #171717;
+            border: 1px solid #333;
+            border-radius: 10px;
+            text-decoration: none;
+            color: inherit;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            border-color: #ff9d00;
+            transform: translateY(-3px);
+        }
+
+        .card h3 {
+            color: #ff9d00;
+            margin-top: 0;
+        }
+
+        .card p {
+            color: #aaa;
+            line-height: 1.5;
+            margin-bottom: 0;
+        }
+
+        .status {
+            grid-column: 1 / -1;
+            color: #ff9d00;
+            margin-top: 10px;
+        }
+
+        /* Уведомления о достижениях */
+
+        #achievementContainer {
+            position: fixed;
+            right: 25px;
+            bottom: 25px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 340px;
+            max-width: calc(100vw - 30px);
+            pointer-events: none;
+        }
+
+        .achievement-toast {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 17px;
+            background: linear-gradient(135deg, #202020, #111);
+            border: 1px solid #a96919;
+            border-left: 4px solid #ff9d00;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.65);
+            animation: achievementIn 0.45s ease forwards;
+        }
+
+        .achievement-toast.hide {
+            animation: achievementOut 0.4s ease forwards;
+        }
+
+        .achievement-heading {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: #ffad27;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .achievement-heading .new-label {
+            margin-left: auto;
+            color: #111;
+            background: #ff9d00;
+            padding: 4px 7px;
+            border-radius: 4px;
+            font-size: 10px;
+        }
+
+        .achievement-content {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .achievement-icon {
+            width: 55px;
+            height: 55px;
+            min-width: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #30200c;
+            border: 1px solid #704715;
+            border-radius: 9px;
+            font-size: 29px;
+        }
+
+        .achievement-text {
+            min-width: 0;
+        }
+
+        .achievement-text h4 {
+            margin: 0 0 6px;
+            font-size: 16px;
+            color: #fff;
+        }
+
+        .achievement-text p {
+            margin: 0;
+            color: #aaa;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .achievement-footer {
+            color: #a56c25;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        @keyframes achievementIn {
+            from {
+                opacity: 0;
+                transform: translateX(110%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes achievementOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(110%);
+            }
+        }
+
+        @media (max-width: 650px) {
+            main { grid-template-columns: 1fr; }
+            .welcome { grid-column: 1; }
+            .status { grid-column: 1; }
+            header { padding: 12px 5%; }
+
+            #achievementContainer {
+                right: 15px;
+                bottom: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <button class="logo-button" id="secretLogo" aria-label="Rock'n'Rolla">
+        <img src="images/icon.png" alt="Rock'n'Rolla">
+    </button>
+
+    <button class="logout" id="logoutBtn">ВЫЙТИ</button>
+</header>
+
+<main>
+    <div class="welcome">
+        <h2>Панель управления</h2>
+        <p>Управление сайтом Rock'n'Rolla</p>
+        <p id="userInfo">Проверяем аккаунт...</p>
+    </div>
+
+    <a href="news.html" class="card">
+        <h3>Новости</h3>
+        <p>Публикация и редактирование новостей сайта.</p>
+    </a>
+
+    <a href="events.html" class="card">
+        <h3>Мероприятия</h3>
+        <p>Создание, редактирование и публикация мероприятий.</p>
+    </a>
+
+    <a href="teams.html" class="card">
+        <h3>Команды</h3>
+        <p>Добавление, редактирование и публикация команд.</p>
+    </a>
+
+    <a href="leaderboard.html" class="card">
+        <h3>Таблица лидеров</h3>
+        <p>Управление очками, местами и сезонами команд.</p>
+    </a>
+
+    <a href="hall-of-fame.html" class="card">
+        <h3>Hall of Fame</h3>
+        <p>Управление победителями, фотографиями и результатами.</p>
+    </a>
+
+    <a href="gallery-admin.html" class="card">
+        <h3>Галерея</h3>
+        <p>Загрузка фотографий и видео, изменение порядка и управление материалами.</p>
+    </a>
+
+    <a href="admins.html" class="card">
+        <h3>Администраторы</h3>
+        <p>Управление владельцами и администраторами сайта.</p>
+    </a>
+
+    <a href="settings.html" class="card">
+        <h3>Настройки</h3>
+        <p>Профиль, безопасность и управление доступом.</p>
+    </a>
+
+    <a href="design.html" class="card">
+        <h3>Оформление сайта</h3>
+        <p>Управление праздничными темами, снегопадом и внешним видом сайта.</p>
+    </a>
+
+    <a href="quiz-admin.html" class="card">
+        <h3>Пробный квиз</h3>
+        <p>Добавление, редактирование и удаление вопросов квиза.</p>
+    </a>
+
+    <a href="analytics.html" class="card">
+        <h3>Статистика сайта</h3>
+        <p>Посещаемость, просмотры страниц и популярность разделов сайта.</p>
+    </a>
+
+    <a href="achievements.html" class="card">
+        <h3>🏆 Достижения</h3>
+        <p>Личные награды и секретные достижения администратора.</p>
+    </a>
+
+    <div class="status">
+    <p id="status"></p>
+    <button id="resetAchievementsBtn" class="reset-achievements">
+        ↻ СБРОСИТЬ МОИ ДОСТИЖЕНИЯ
+    </button>
+</div>
+</main>
+
+<!-- Контейнер уведомлений -->
+<div id="achievementContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+
+<script>
+    let currentUser = null;
+    let achievementQueue = [];
+    let notificationRunning = false;
+
+    // Показываем уведомление о новом достижении
+    function showAchievement(achievement) {
+        achievementQueue.push(achievement);
+
+        if (!notificationRunning) {
+            processAchievementQueue();
+        }
+    }
+
+    // Показываем достижения по очереди
+    async function processAchievementQueue() {
+        if (notificationRunning || achievementQueue.length === 0) {
+            return;
+        }
+
+        notificationRunning = true;
+
+        const achievement = achievementQueue.shift();
+        const container = document.getElementById("achievementContainer");
+
+        const toast = document.createElement("div");
+        toast.className = "achievement-toast";
+
+        const heading = document.createElement("div");
+        heading.className = "achievement-heading";
+
+        const trophy = document.createElement("span");
+        trophy.textContent = "🏆";
+
+        const headingText = document.createElement("span");
+        headingText.textContent = "ДОСТИЖЕНИЕ ПОЛУЧЕНО!";
+
+        const newLabel = document.createElement("span");
+        newLabel.className = "new-label";
+        newLabel.textContent = "NEW";
+
+        heading.append(trophy, headingText, newLabel);
+
+        const content = document.createElement("div");
+        content.className = "achievement-content";
+
+        const icon = document.createElement("div");
+        icon.className = "achievement-icon";
+        icon.textContent = achievement.icon || "🏆";
+
+        const textBlock = document.createElement("div");
+        textBlock.className = "achievement-text";
+
+        const title = document.createElement("h4");
+        title.textContent = achievement.title;
+
+        const description = document.createElement("p");
+        description.textContent = achievement.description;
+
+        textBlock.append(title, description);
+        content.append(icon, textBlock);
+
+        const footer = document.createElement("div");
+        footer.className = "achievement-footer";
+        footer.textContent = "ROCK'N'ROLLA • ACHIEVEMENTS";
+
+        toast.append(heading, content, footer);
+        container.appendChild(toast);
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        toast.classList.add("hide");
+
+        await new Promise(resolve => setTimeout(resolve, 400));
+
+        toast.remove();
+
+        notificationRunning = false;
+        processAchievementQueue();
+    }
+
+    // Проверяем новые достижения после входа
+    async function registerLoginAndAchievements() {
+        const loginKey = "rnr_login_counted_" + currentUser.id;
+
+        if (sessionStorage.getItem(loginKey)) {
+            return;
+        }
+
+        // Получаем достижения, которые были у пользователя до входа
+        const { data: previousAchievements, error: previousError } =
+            await supabaseClient
+                .from("admin_user_achievements")
+                .select("achievement_code")
+                .eq("user_id", currentUser.id);
+
+        if (previousError) {
+            console.error("Ошибка получения старых достижений:", previousError);
+            return;
+        }
+
+        const previousCodes = new Set(
+            (previousAchievements || []).map(item => item.achievement_code)
+        );
+
+        // Засчитываем вход
+        const { data: loginData, error: loginError } =
+            await supabaseClient.rpc("register_admin_login");
+
+        if (loginError) {
+            console.error("Ошибка учёта входа:", loginError);
+            return;
+        }
+
+        sessionStorage.setItem(loginKey, "true");
+
+        console.log("Вход учтён:", loginData);
+
+        // Получаем актуальные достижения
+        const { data: currentAchievements, error: currentError } =
+            await supabaseClient
+                .from("admin_user_achievements")
+                .select("achievement_code")
+                .eq("user_id", currentUser.id);
+
+        if (currentError) {
+            console.error("Ошибка получения достижений:", currentError);
+            return;
+        }
+
+        // Находим только что полученные достижения
+        const newCodes = (currentAchievements || [])
+            .map(item => item.achievement_code)
+            .filter(code => !previousCodes.has(code));
+
+        if (newCodes.length === 0) {
+            return;
+        }
+
+        // Загружаем информацию о новых достижениях
+        const { data: achievementDetails, error: detailsError } =
+            await supabaseClient
+                .from("admin_achievements")
+                .select("code, title, description, icon")
+                .in("code", newCodes);
+
+        if (detailsError) {
+            console.error("Ошибка загрузки информации о достижениях:", detailsError);
+            return;
+        }
+
+        // Показываем уведомления
+        (achievementDetails || []).forEach(achievement => {
+            showAchievement(achievement);
+        });
+    }
+
+    async function checkAccess() {
+        const { data, error } = await supabaseClient.auth.getUser();
+
+        if (error || !data.user) {
+            window.location.href = "admin.html";
+            return;
+        }
+
+        const { data: profile, error: profileError } =
+            await supabaseClient
+                .from("profiles")
+                .select("display_name, role")
+                .eq("user_id", data.user.id)
+                .single();
+
+        if (profileError || !profile ||
+            !["owner", "admin", "editor"].includes(profile.role)) {
+            await supabaseClient.auth.signOut();
+            window.location.href = "admin.html";
+            return;
+        }
+
+        currentUser = data.user;
+
+        document.getElementById("userInfo").textContent =
+            "Вы вошли как: " + (profile.display_name || "Администратор") +
+            " | Роль: " + profile.role;
+
+        document.getElementById("status").textContent =
+            "Подключение к Supabase успешно.";
+
+        // Учитываем вход и проверяем новые достижения
+        await registerLoginAndAchievements();
+    }
+
+// Временный сброс достижений текущего администратора
+document.getElementById("resetAchievementsBtn").addEventListener("click", async () => {
+    if (!currentUser) return;
+
+    const confirmed = confirm(
+        "Ты действительно хочешь сбросить ВСЕ свои достижения и статистику входов? Это действие нельзя отменить."
+    );
+
+    if (!confirmed) return;
+
+    const button = document.getElementById("resetAchievementsBtn");
+    button.disabled = true;
+    button.textContent = "СБРОС...";
+
+    const { data, error } = await supabaseClient.rpc(
+        "reset_my_admin_achievements"
+    );
+
+    if (error || data !== true) {
+        console.error("Ошибка сброса:", error);
+        alert("Не удалось сбросить достижения. Проверь консоль.");
+        button.disabled = false;
+        button.textContent = "↻ СБРОСИТЬ МОИ ДОСТИЖЕНИЯ";
+        return;
+    }
+
+    sessionStorage.removeItem("rnr_login_counted_" + currentUser.id);
+
+    alert("Достижения и статистика сброшены! Сейчас страница обновится.");
+
+    window.location.reload();
+});
+
+    // Выход из аккаунта
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+        if (currentUser) {
+            sessionStorage.removeItem("rnr_login_counted_" + currentUser.id);
+        }
+
+        await supabaseClient.auth.signOut();
+        window.location.href = "admin.html";
+    });
+
+    // Секретная комната
+    document.getElementById("secretLogo").addEventListener("click", async () => {
+        if (!currentUser) return;
+
+        const { data, error } =
+            await supabaseClient.rpc("discover_secret_room");
+
+        if (error || data !== true) {
+            alert("Не удалось открыть секретную комнату. Попробуй ещё раз.");
+            console.error(error);
+            return;
+        }
+
+        window.location.href = "secret-room.html";
+    });
+
+    checkAccess();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новость — Rock'n'Rolla</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+    
+</head>
+<body class="news-detail-page">
+
+<header class="news-header">
+    <a href="news-public.html" class="news-back">← Все новости</a>
+</header>
+
+<main class="news-detail-main">
+    <p id="status" class="news-loading">Загружаем новость...</p>
+
+    <article id="newsArticle" style="display:none">
+
+    <!-- Обложка новости -->
+    <img id="newsCover" class="news-detail-image" alt="Обложка новости">
+
+    <!-- Видео новости -->
+    <!-- ROCK'N'ROLLA VIDEO PLAYER -->
+<div class="rock-player" id="rockPlayer" style="display:none">
+
+    <video
+        id="newsVideo"
+        playsinline
+        preload="metadata">
+    </video>
+
+    <!-- Большая кнопка воспроизведения -->
+    <button class="rock-play" id="rockPlay">
+        ▶
+    </button>
+
+    <!-- Панель управления -->
+    <div class="rock-controls">
+
+        <button id="rockToggle">▶</button>
+
+        <span id="rockCurrent">0:00</span>
+
+        <input
+            type="range"
+            id="rockProgress"
+            min="0"
+            max="100"
+            value="0">
+
+        <span id="rockDuration">0:00</span>
+
+        <button id="rockMute">🔊</button>
+
+        <button id="rockFullscreen">⛶</button>
+
+    </div>
+
+</div>
+
+    <div id="newsDate" class="news-detail-date"></div>
+    <h1 id="newsTitle" class="news-detail-title"></h1>
+    <div id="newsContent" class="news-detail-content"></div>
+
+</article>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/theme.js"></script>
+
+<script>
+async function loadNews() {
+console.log("СКРИПТ ЗАПУСТИЛСЯ");
+    const status = document.getElementById("status");
+
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get("id");
+
+        if (!id) {
+            status.textContent = "Новость не найдена.";
+            return;
+        }
+
+        const { data, error } = await supabaseClient
+            .from("news")
+            .select("title, content, cover_image_url, video_url, created_at")
+            .eq("id", id)
+            .eq("is_published", true)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+            status.textContent = "Не удалось найти эту новость.";
+            return;
+        }
+
+        document.title = data.title + " — Rock'n'Rolla";
+
+        document.getElementById("newsTitle").textContent = data.title;
+        document.getElementById("newsContent").textContent = data.content;
+
+        document.getElementById("newsDate").textContent =
+            new Date(data.created_at).toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
+
+        const cover = document.getElementById("newsCover");
+
+        if (data.cover_image_url && !data.video_url) {
+    cover.src = data.cover_image_url;
+    cover.style.display = "block";
+} else {
+    cover.style.display = "none";
+}
+
+        const video = document.getElementById("newsVideo");
+const player = document.getElementById("rockPlayer");
+
+if (data.video_url) {
+    video.src = data.video_url;
+    player.style.display = "block";
+    video.load();
+} else {
+    player.style.display = "none";
+    video.removeAttribute("src");
+    video.load();
+}
+
+        status.style.display = "none";
+        document.getElementById("newsArticle").style.display = "block";
+
+    } catch (error) {
+        console.error("Ошибка загрузки новости:", error);
+        status.textContent = "Ошибка загрузки: " + error.message;
+    }
+}
+
+loadNews();
+console.log("ВЫЗОВ LOADNEWS ВЫПОЛНЕН");
+// ROCK'N'ROLLA PLAYER CONTROLS
+
+const video = document.getElementById("newsVideo");
+const player = document.getElementById("rockPlayer");
+
+const playButton = document.getElementById("rockPlay");
+const toggleButton = document.getElementById("rockToggle");
+const muteButton = document.getElementById("rockMute");
+const fullscreenButton = document.getElementById("rockFullscreen");
+
+const progress = document.getElementById("rockProgress");
+const currentTime = document.getElementById("rockCurrent");
+const duration = document.getElementById("rockDuration");
+
+function formatTime(seconds) {
+    if (!Number.isFinite(seconds)) return "0:00";
+
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+
+    return minutes + ":" + String(secs).padStart(2, "0");
+}
+
+async function togglePlay() {
+    if (video.paused) {
+        try {
+            await video.play();
+        } catch (error) {
+            console.error("Не удалось запустить видео:", error);
+        }
+    } else {
+        video.pause();
+    }
+}
+
+playButton.addEventListener("click", togglePlay);
+toggleButton.addEventListener("click", togglePlay);
+
+video.addEventListener("play", () => {
+    player.classList.add("playing");
+    toggleButton.textContent = "Ⅱ";
+});
+
+video.addEventListener("pause", () => {
+    player.classList.remove("playing");
+    toggleButton.textContent = "▶";
+});
+
+video.addEventListener("loadedmetadata", () => {
+    duration.textContent = formatTime(video.duration);
+});
+
+video.addEventListener("timeupdate", () => {
+    currentTime.textContent = formatTime(video.currentTime);
+
+    if (video.duration) {
+        progress.value = (video.currentTime / video.duration) * 100;
+    }
+});
+
+progress.addEventListener("input", () => {
+    if (video.duration) {
+        video.currentTime = (progress.value / 100) * video.duration;
+    }
+});
+
+muteButton.addEventListener("click", () => {
+    video.muted = !video.muted;
+    muteButton.textContent = video.muted ? "🔇" : "🔊";
+});
+
+fullscreenButton.addEventListener("click", async () => {
+    try {
+        if (!document.fullscreenElement) {
+            await player.requestFullscreen();
+        } else {
+            await document.exitFullscreen();
+        }
+    } catch (error) {
+        console.error("Ошибка полноэкранного режима:", error);
+    }
+});
+</script>
+
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script> 
+
+</body>
+</html>

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление командами — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        h1, h2 {
+            color: #ff9d00;
+        }
+
+        a {
+            color: #ffb52e;
+            text-decoration: none;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: #1c1c1c;
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            background: #292929;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 11px 17px;
+            border: 0;
+            border-radius: 6px;
+            background: #ff9d00;
+            color: #111;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+
+        button:hover {
+            background: #ffc04d;
+        }
+
+        button.delete {
+            background: #a83232;
+            color: white;
+        }
+
+        .team {
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 18px;
+            margin-top: 15px;
+        }
+
+        .team img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            background: #292929;
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .muted {
+            color: #aaa;
+        }
+
+        .status {
+            color: #ffb52e;
+        }
+
+        #message {
+            margin: 15px 0;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="top">
+        <div>
+            <h1>Управление командами</h1>
+            <a href="dashboard.html">← Вернуться в панель</a>
+        </div>
+
+        <button id="logoutBtn">Выйти</button>
+    </div>
+
+    <div class="panel">
+        <h2 id="formTitle">Добавить команду</h2>
+
+        <form id="teamForm">
+            <label for="teamName">Название команды</label>
+            <input id="teamName" type="text" required maxlength="100">
+
+            <label for="teamDescription">Описание</label>
+            <textarea id="teamDescription" maxlength="2000"></textarea>
+
+            <label for="teamLogo">Логотип команды</label>
+            <input id="teamLogo" type="file" accept="image/*">
+
+            <label>
+                <input id="teamPublished" type="checkbox" checked
+                    style="width:auto;margin-right:8px;">
+                Опубликовать на сайте
+            </label>
+
+            <button type="submit" id="saveBtn">Добавить команду</button>
+            <button type="button" id="cancelBtn" hidden>Отмена</button>
+        </form>
+
+        <p id="message"></p>
+    </div>
+
+    <div class="panel">
+        <h2>Все команды</h2>
+        <div id="teamsList">Загрузка команд...</div>
+    </div>
+
+</div>
+
+<script>
+const form = document.getElementById("teamForm");
+const list = document.getElementById("teamsList");
+const message = document.getElementById("message");
+
+const nameInput = document.getElementById("teamName");
+const descriptionInput = document.getElementById("teamDescription");
+const logoInput = document.getElementById("teamLogo");
+const publishedInput = document.getElementById("teamPublished");
+
+let currentUser = null;
+let editingTeamId = null;
+let editingLogoUrl = null;
+
+async function checkAccess() {
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    currentUser = data.user;
+
+    const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (
+        profileError ||
+        !profile ||
+        !["owner", "admin", "editor"].includes(profile.role)
+    ) {
+        await supabaseClient.auth.signOut();
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    return true;
+}
+
+async function loadTeams() {
+    list.textContent = "Загрузка команд...";
+
+    const { data, error } = await supabaseClient
+        .from("teams")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        list.textContent = "Ошибка загрузки команд: " + error.message;
+        return;
+    }
+
+    list.replaceChildren();
+
+    if (!data || data.length === 0) {
+        list.textContent = "Команд пока нет.";
+        return;
+    }
+
+    data.forEach(team => {
+        const card = document.createElement("div");
+        card.className = "team";
+
+        const title = document.createElement("h3");
+        title.textContent = team.name;
+
+        card.appendChild(title);
+
+        if (team.logo_url) {
+            const image = document.createElement("img");
+            image.src = team.logo_url;
+            image.alt = "Логотип команды " + team.name;
+            card.appendChild(image);
+        }
+
+        const description = document.createElement("p");
+        description.textContent = team.description || "Без описания";
+
+        const status = document.createElement("p");
+        status.className = "status";
+        status.textContent = team.is_published
+            ? "Опубликовано"
+            : "Не опубликовано";
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Редактировать";
+        editBtn.addEventListener("click", () => editTeam(team));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Удалить";
+        deleteBtn.className = "delete";
+        deleteBtn.addEventListener("click", () => deleteTeam(team.id));
+
+        card.append(description, status, editBtn, deleteBtn);
+        list.appendChild(card);
+    });
+}
+
+async function uploadLogo(file) {
+    if (!file) return null;
+
+    if (!file.type.startsWith("image/")) {
+        throw new Error("Выбери файл изображения.");
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        throw new Error("Размер логотипа не должен превышать 5 МБ.");
+    }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = currentUser.id + "/" + Date.now() + "_" + safeName;
+
+    const { error } = await supabaseClient.storage
+        .from("team-logos")
+        .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false
+        });
+
+    if (error) throw error;
+
+    const { data } = supabaseClient.storage
+        .from("team-logos")
+        .getPublicUrl(filePath);
+
+    return data.publicUrl;
+}
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    message.textContent = "Сохранение...";
+
+    try {
+        let logoUrl = editingLogoUrl;
+
+        const file = logoInput.files[0];
+
+        if (file) {
+            logoUrl = await uploadLogo(file);
+        }
+
+        const teamData = {
+            name: nameInput.value.trim(),
+            description: descriptionInput.value.trim(),
+            logo_url: logoUrl,
+            is_published: publishedInput.checked
+        };
+
+        if (!teamData.name) {
+            throw new Error("Введи название команды.");
+        }
+
+        let result;
+
+        if (editingTeamId) {
+            result = await supabaseClient
+                .from("teams")
+                .update(teamData)
+                .eq("id", editingTeamId);
+        } else {
+            result = await supabaseClient
+                .from("teams")
+                .insert(teamData);
+        }
+
+        if (result.error) throw result.error;
+
+        message.textContent = "Команда успешно сохранена!";
+        resetForm();
+        await loadTeams();
+
+    } catch (error) {
+        console.error(error);
+        message.textContent = "Ошибка: " + error.message;
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
+
+function editTeam(team) {
+    editingTeamId = team.id;
+    editingLogoUrl = team.logo_url;
+
+    nameInput.value = team.name || "";
+    descriptionInput.value = team.description || "";
+    publishedInput.checked = team.is_published;
+
+    logoInput.value = "";
+
+    document.getElementById("formTitle").textContent = "Редактировать команду";
+    document.getElementById("saveBtn").textContent = "Сохранить изменения";
+    document.getElementById("cancelBtn").hidden = false;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetForm() {
+    editingTeamId = null;
+    editingLogoUrl = null;
+    form.reset();
+
+    document.getElementById("formTitle").textContent = "Добавить команду";
+    document.getElementById("saveBtn").textContent = "Добавить команду";
+    document.getElementById("cancelBtn").hidden = true;
+}
+
+document.getElementById("cancelBtn").addEventListener("click", () => {
+    resetForm();
+    message.textContent = "";
+});
+
+async function deleteTeam(id) {
+    if (!confirm("Точно удалить эту команду?")) return;
+
+    const { error } = await supabaseClient
+        .from("teams")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        message.textContent = "Ошибка удаления: " + error.message;
+        return;
+    }
+
+    message.textContent = "Команда удалена.";
+    await loadTeams();
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "admin.html";
+});
+
+(async function init() {
+    const allowed = await checkAccess();
+
+    if (allowed) {
+        await loadTeams();
+    }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,524 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мероприятия — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #101010;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        h1, h2 {
+            color: #ff9d00;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        a {
+            color: #ff9d00;
+            text-decoration: none;
+        }
+
+        .panel, .event {
+            background: #1b1b1b;
+            border: 1px solid #383838;
+            border-radius: 10px;
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px;
+            background: #292929;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: white;
+            font-size: 15px;
+        }
+
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        label {
+            color: #ccc;
+        }
+
+        .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .checkbox input {
+            width: auto;
+            margin: 0;
+        }
+
+        button {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 6px;
+            background: #ff9d00;
+            color: #111;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 4px;
+        }
+
+        button:hover {
+            background: #ffc04d;
+        }
+
+        .delete {
+            background: #a83232;
+            color: white;
+        }
+
+        .delete:hover {
+            background: #d04444;
+        }
+
+        .event h3 {
+            color: #ff9d00;
+            margin-top: 0;
+        }
+
+        .muted {
+            color: #aaa;
+        }
+
+        .status {
+            color: #ffbd4a;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="top">
+        <div>
+            <h1>Мероприятия</h1>
+            <a href="dashboard.html">← Назад в панель управления</a>
+        </div>
+        <button id="logoutBtn">Выйти</button>
+    </div>
+
+    <div class="panel">
+        <h2 id="formTitle">Добавить мероприятие</h2>
+
+        <form id="eventForm">
+            <label>Название мероприятия</label>
+            <input id="title" type="text" required maxlength="150"
+                   placeholder="Например: Rock'n'Rolla Quiz">
+
+            <label>Описание</label>
+            <textarea id="description" required
+                      placeholder="Расскажи о мероприятии..."></textarea>
+
+	    <label>Фотография мероприятия</label>
+<input id="eventImage" type="file" accept="image/*">
+
+<img id="imagePreview"
+     src=""
+     alt="Предпросмотр фотографии"
+     style="display:none; width:100%; max-width:350px; border-radius:8px; margin:10px 0 20px; object-fit:cover;">
+
+            <label>Дата и время</label>
+            <input id="eventDate" type="datetime-local" required>
+
+            <label>Место проведения</label>
+            <input id="location" type="text" maxlength="200"
+                   placeholder="Например: Актовый зал">
+
+            <label>Ссылка на регистрацию</label>
+            <input id="registrationUrl" type="url"
+                   placeholder="https://example.com">
+
+            <label class="checkbox">
+                <input id="published" type="checkbox">
+                Опубликовать мероприятие
+            </label>
+
+            <button type="submit" id="saveBtn">Сохранить мероприятие</button>
+            <button type="button" id="cancelBtn" hidden>Отмена</button>
+        </form>
+    </div>
+
+    <h2>Все мероприятия</h2>
+    <div id="eventsList">
+        <p class="muted">Загрузка...</p>
+    </div>
+
+</div>
+
+<script>
+
+let currentUser = null;
+let editingId = null;
+let currentImageUrl = null;
+
+const form = document.getElementById("eventForm");
+const list = document.getElementById("eventsList");
+
+const imageInput = document.getElementById("eventImage");
+const imagePreview = document.getElementById("imagePreview");
+
+imageInput.addEventListener("change", () => {
+    const file = imageInput.files[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        alert("Выбери файл изображения.");
+        imageInput.value = "";
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert("Размер фотографии не должен превышать 5 МБ.");
+        imageInput.value = "";
+        return;
+    }
+
+    imagePreview.src = URL.createObjectURL(file);
+    imagePreview.style.display = "block";
+});
+
+async function init() {
+    const { data: authData } = await supabaseClient.auth.getUser();
+
+    if (!authData.user) {
+        location.href = "admin.html";
+        return;
+    }
+
+    currentUser = authData.user;
+
+    const { data: profile, error } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (error || !profile ||
+        !["owner", "admin", "editor"].includes(profile.role)) {
+        await supabaseClient.auth.signOut();
+        location.href = "admin.html";
+        return;
+    }
+
+    await loadEvents();
+}
+
+async function loadEvents() { const { data: sessionData } = await supabaseClient.auth.getSession();
+console.log("Сессия:", sessionData.session);
+
+const { data: accessData, error: accessError } =
+    await supabaseClient.rpc("has_admin_access");
+
+console.log("Доступ администратора:", accessData);
+console.log("Ошибка проверки:", accessError);
+
+    list.textContent = "Загрузка мероприятий...";
+
+const { data, error } = await supabaseClient
+    .from("events")
+    .select("*")
+    .order("event_date", { ascending: true });
+
+console.log("Мероприятия из базы:", data);
+console.log("Ошибка загрузки:", error);
+
+    if (error) {
+        console.error(error);
+        list.textContent = "Не удалось загрузить мероприятия.";
+        return;
+    }
+
+    list.replaceChildren();
+
+    if (!data || data.length === 0) {
+        list.textContent = "Мероприятий пока нет.";
+        return;
+    }
+
+    data.forEach(event => {
+        const card = document.createElement("div");
+        card.className = "event";
+
+if (event.cover_image_url) {
+    const image = document.createElement("img");
+    image.src = event.cover_image_url;
+    image.alt = event.title || "Фотография мероприятия";
+    image.style.width = "100%";
+    image.style.maxWidth = "300px";
+    image.style.borderRadius = "8px";
+    image.style.marginBottom = "15px";
+    image.style.objectFit = "cover";
+    card.appendChild(image);
+}
+
+
+        const title = document.createElement("h3");
+        title.textContent = event.title;
+
+        const description = document.createElement("p");
+        description.textContent = event.description || "";
+
+        const date = document.createElement("p");
+        date.className = "muted";
+        const parsedDate = new Date(event.event_date);
+        date.textContent = "Дата: " +
+            (Number.isNaN(parsedDate.getTime())
+                ? event.event_date
+                : parsedDate.toLocaleString("ru-RU"));
+
+        const location = document.createElement("p");
+        location.textContent = "Место: " + (event.location || "Не указано");
+
+        const status = document.createElement("p");
+        status.className = "status";
+        status.textContent = event.is_published
+            ? "Опубликовано"
+            : "Не опубликовано";
+
+        card.append(title, description, date, location, status);
+
+        if (event.registration_url) {
+            const link = document.createElement("a");
+            link.href = event.registration_url;
+            link.textContent = "Ссылка на регистрацию";
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            card.appendChild(link);
+        }
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Редактировать";
+        editBtn.addEventListener("click", () => editEvent(event));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Удалить";
+        deleteBtn.className = "delete";
+        deleteBtn.addEventListener("click", () => deleteEvent(event.id));
+
+        card.append(editBtn, deleteBtn);
+        list.appendChild(card);
+    });
+}
+
+function editEvent(event) {
+    editingId = event.id;
+
+currentImageUrl = event.cover_image_url || null;
+
+if (currentImageUrl) {
+    imagePreview.src = currentImageUrl;
+    imagePreview.style.display = "block";
+} else {
+    imagePreview.style.display = "none";
+    imagePreview.removeAttribute("src");
+}
+
+imageInput.value = "";
+
+
+    document.getElementById("formTitle").textContent =
+        "Редактировать мероприятие";
+
+    document.getElementById("title").value = event.title || "";
+    document.getElementById("description").value = event.description || "";
+    document.getElementById("location").value = event.location || "";
+    document.getElementById("registrationUrl").value =
+        event.registration_url || "";
+    document.getElementById("published").checked = event.is_published;
+
+    if (event.event_date) {
+        const date = new Date(event.event_date);
+        const localDate = new Date(
+            date.getTime() - date.getTimezoneOffset() * 60000
+        );
+        document.getElementById("eventDate").value =
+            localDate.toISOString().slice(0, 16);
+    }
+
+    document.getElementById("saveBtn").textContent = "Сохранить изменения";
+    document.getElementById("cancelBtn").hidden = false;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetForm() {
+form.reset();
+editingId = null;
+currentImageUrl = null;
+
+imagePreview.style.display = "none";
+imagePreview.removeAttribute("src");
+imageInput.value = "";
+
+    document.getElementById("formTitle").textContent =
+        "Добавить мероприятие";
+
+    document.getElementById("saveBtn").textContent =
+        "Сохранить мероприятие";
+
+    document.getElementById("cancelBtn").hidden = true;
+}
+
+document.getElementById("cancelBtn").addEventListener("click", resetForm);
+
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Сохранение...";
+
+    try {
+        let imageUrl = currentImageUrl;
+        const file = imageInput.files[0];
+
+        // Загружаем новую фотографию, если она выбрана
+        if (file) {
+            if (!file.type.startsWith("image/")) {
+                throw new Error("Выбери файл изображения.");
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                throw new Error("Размер фотографии не должен превышать 5 МБ.");
+            }
+
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+            const filePath = `events/${Date.now() + "-" + Math.random().toString(16).slice(2)}-${safeName}`;
+
+            const { error: uploadError } = await supabaseClient
+                .storage
+                .from("news-images")
+                .upload(filePath, file, {
+                    cacheControl: "3600",
+                    upsert: false
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { data: publicData } = supabaseClient
+                .storage
+                .from("news-images")
+                .getPublicUrl(filePath);
+
+            imageUrl = publicData.publicUrl;
+        }
+
+        const eventData = {
+            title: document.getElementById("title").value.trim(),
+            description: document.getElementById("description").value.trim(),
+            event_date: new Date(
+                document.getElementById("eventDate").value
+            ).toISOString(),
+            location: document.getElementById("location").value.trim() || null,
+            registration_url:
+                document.getElementById("registrationUrl").value.trim() || null,
+            cover_image_url: imageUrl,
+            is_published: document.getElementById("published").checked
+        };
+
+        let result;
+
+        if (editingId) {
+            result = await supabaseClient
+                .from("events")
+                .update(eventData)
+                .eq("id", editingId);
+        } else {
+            result = await supabaseClient
+                .from("events")
+                .insert(eventData);
+        }
+
+        if (result.error) throw result.error;
+
+        alert("Мероприятие сохранено!");
+
+        resetForm();
+        await loadEvents();
+
+    } catch (error) {
+        console.error("Ошибка сохранения:", error);
+        alert("Ошибка: " + error.message);
+
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = editingId
+            ? "Сохранить изменения"
+            : "Сохранить мероприятие";
+    }
+});
+
+
+async function deleteEvent(id) {
+    if (!confirm("Точно удалить это мероприятие?")) return;
+
+    const { error } = await supabaseClient
+        .from("events")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        alert("Ошибка удаления: " + error.message);
+        return;
+    }
+
+    await loadEvents();
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    location.href = "admin.html";
+});
+
+init();
+</script>
+</body>
+</html>

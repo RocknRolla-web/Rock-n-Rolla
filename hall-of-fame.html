@@ -1,0 +1,436 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hall of Fame — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container { max-width: 1100px; margin: auto; }
+
+        h1, h2 { color: #ff9d00; }
+
+        a { color: #ffb52e; text-decoration: none; }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: #1c1c1c;
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            background: #292929;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+        }
+
+        textarea { min-height: 90px; resize: vertical; }
+
+        label { display: block; margin-top: 10px; }
+
+        button {
+            padding: 11px 17px;
+            border: 0;
+            border-radius: 6px;
+            background: #ff9d00;
+            color: #111;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+
+        button:hover { background: #ffc04d; }
+
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        button.delete { background: #a83232; color: white; }
+
+        .winner {
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 18px;
+            margin-top: 15px;
+        }
+
+        .winner img {
+            width: 130px;
+            height: 130px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: #292929;
+        }
+
+        .status { color: #ffb52e; }
+        .muted { color: #aaa; }
+        #message { margin: 15px 0; }
+
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .panel { padding: 16px; }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="top">
+        <div>
+            <h1>Hall of Fame 🏆</h1>
+            <a href="dashboard.html">← Вернуться в панель</a>
+        </div>
+        <button id="logoutBtn">Выйти</button>
+    </div>
+
+    <div class="panel">
+        <h2 id="formTitle">Добавить победителя</h2>
+
+        <form id="winnerForm">
+            <label for="title">Название турнира / события</label>
+            <input id="title" type="text" maxlength="150" required>
+
+            <label for="winnerName">Имя победителя или команды</label>
+            <input id="winnerName" type="text" maxlength="150" required>
+
+            <label for="score">Результат</label>
+            <input id="score" type="text" maxlength="100"
+                   placeholder="Например: 1250 очков">
+
+            <label for="description">Описание</label>
+            <textarea id="description" maxlength="2000"></textarea>
+
+            <label for="photo">Фотография</label>
+            <input id="photo" type="file" accept="image/*">
+
+            <label for="displayOrder">Порядок отображения</label>
+            <input id="displayOrder" type="number" min="0" step="1" value="0">
+
+            <label>
+                <input id="published" type="checkbox" checked
+                       style="width:auto;margin-right:8px;">
+                Опубликовать запись
+            </label>
+
+            <button type="submit" id="saveBtn">Добавить победителя</button>
+            <button type="button" id="cancelBtn" hidden>Отмена</button>
+        </form>
+
+        <p id="message"></p>
+    </div>
+
+    <div class="panel">
+        <h2>Все записи Hall of Fame</h2>
+        <div id="winnersList">Загрузка...</div>
+    </div>
+
+</div>
+
+<script>
+const form = document.getElementById("winnerForm");
+const list = document.getElementById("winnersList");
+const message = document.getElementById("message");
+
+const titleInput = document.getElementById("title");
+const winnerInput = document.getElementById("winnerName");
+const scoreInput = document.getElementById("score");
+const descriptionInput = document.getElementById("description");
+const photoInput = document.getElementById("photo");
+const orderInput = document.getElementById("displayOrder");
+const publishedInput = document.getElementById("published");
+
+let currentUser = null;
+let editingId = null;
+let editingPhotoUrl = null;
+
+async function checkAccess() {
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    currentUser = data.user;
+
+    const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (
+        profileError ||
+        !profile ||
+        !["owner", "admin", "editor"].includes(profile.role)
+    ) {
+        await supabaseClient.auth.signOut();
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    return true;
+}
+
+async function uploadPhoto(file) {
+    if (!file) return null;
+
+    if (!file.type.startsWith("image/")) {
+        throw new Error("Выбери файл изображения.");
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        throw new Error("Размер фотографии не должен превышать 5 МБ.");
+    }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = currentUser.id + "/" + Date.now() + "_" + safeName;
+
+    const { error } = await supabaseClient.storage
+        .from("hall-of-fame")
+        .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false
+        });
+
+    if (error) throw error;
+
+    const { data } = supabaseClient.storage
+        .from("hall-of-fame")
+        .getPublicUrl(filePath);
+
+    return data.publicUrl;
+}
+
+async function loadWinners() {
+    list.textContent = "Загрузка записей...";
+
+    const { data, error } = await supabaseClient
+        .from("hall_of_fame")
+        .select("*")
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        list.textContent = "Ошибка загрузки: " + error.message;
+        return;
+    }
+
+    list.replaceChildren();
+
+    if (!data || data.length === 0) {
+        list.textContent = "Записей пока нет.";
+        return;
+    }
+
+    data.forEach(winner => {
+        const card = document.createElement("div");
+        card.className = "winner";
+
+        const heading = document.createElement("h3");
+        heading.textContent = winner.title;
+
+        const name = document.createElement("p");
+        name.textContent = "Победитель: " + winner.winner_name;
+
+        const score = document.createElement("p");
+        score.textContent = "Результат: " + (winner.score || "Не указан");
+
+        const description = document.createElement("p");
+        description.textContent = winner.description || "";
+
+        card.append(heading, name, score, description);
+
+        if (winner.photo_url) {
+            const image = document.createElement("img");
+            image.src = winner.photo_url;
+            image.alt = "Фотография: " + winner.winner_name;
+            card.appendChild(image);
+        }
+
+        const order = document.createElement("p");
+        order.textContent = "Порядок: " + winner.display_order;
+
+        const status = document.createElement("p");
+        status.className = "status";
+        status.textContent = winner.is_published
+            ? "Опубликовано"
+            : "Не опубликовано";
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Редактировать";
+        editBtn.addEventListener("click", () => editWinner(winner));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Удалить";
+        deleteBtn.className = "delete";
+        deleteBtn.addEventListener("click", () => deleteWinner(winner.id));
+
+        card.append(order, status, editBtn, deleteBtn);
+        list.appendChild(card);
+    });
+}
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    message.textContent = "Сохранение...";
+
+    try {
+        let photoUrl = editingPhotoUrl;
+
+        if (photoInput.files[0]) {
+            photoUrl = await uploadPhoto(photoInput.files[0]);
+        }
+
+        const order = Number(orderInput.value);
+
+        if (!Number.isInteger(order) || order < 0) {
+            throw new Error("Порядок должен быть целым числом от нуля.");
+        }
+
+        const winnerData = {
+            title: titleInput.value.trim(),
+            winner_name: winnerInput.value.trim(),
+            score: scoreInput.value.trim(),
+            description: descriptionInput.value.trim(),
+            photo_url: photoUrl,
+            display_order: order,
+            is_published: publishedInput.checked
+        };
+
+        if (!winnerData.title || !winnerData.winner_name) {
+            throw new Error("Заполни название и имя победителя.");
+        }
+
+        let result;
+
+        if (editingId) {
+            result = await supabaseClient
+                .from("hall_of_fame")
+                .update(winnerData)
+                .eq("id", editingId);
+        } else {
+            result = await supabaseClient
+                .from("hall_of_fame")
+                .insert(winnerData);
+        }
+
+        if (result.error) throw result.error;
+
+        message.textContent = "Запись успешно сохранена!";
+        resetForm();
+        await loadWinners();
+
+    } catch (error) {
+        console.error(error);
+        message.textContent = "Ошибка: " + error.message;
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
+
+function editWinner(winner) {
+    editingId = winner.id;
+    editingPhotoUrl = winner.photo_url;
+
+    titleInput.value = winner.title || "";
+    winnerInput.value = winner.winner_name || "";
+    scoreInput.value = winner.score || "";
+    descriptionInput.value = winner.description || "";
+    orderInput.value = winner.display_order ?? 0;
+    publishedInput.checked = winner.is_published;
+
+    photoInput.value = "";
+
+    document.getElementById("formTitle").textContent =
+        "Редактировать запись";
+    document.getElementById("saveBtn").textContent =
+        "Сохранить изменения";
+    document.getElementById("cancelBtn").hidden = false;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetForm() {
+    editingId = null;
+    editingPhotoUrl = null;
+    form.reset();
+    orderInput.value = 0;
+
+    document.getElementById("formTitle").textContent =
+        "Добавить победителя";
+    document.getElementById("saveBtn").textContent =
+        "Добавить победителя";
+    document.getElementById("cancelBtn").hidden = true;
+}
+
+document.getElementById("cancelBtn").addEventListener("click", () => {
+    resetForm();
+    message.textContent = "";
+});
+
+async function deleteWinner(id) {
+    if (!confirm("Точно удалить эту запись?")) return;
+
+    const { error } = await supabaseClient
+        .from("hall_of_fame")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        message.textContent = "Ошибка удаления: " + error.message;
+        return;
+    }
+
+    message.textContent = "Запись удалена.";
+    await loadWinners();
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "admin.html";
+});
+
+(async function init() {
+    const allowed = await checkAccess();
+
+    if (allowed) {
+        await loadWinners();
+    }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/favicon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Галерея — Rock'n'Rolla Quiz</title>
+    <meta name="description" content="Фотографии и видео с игр Rock'n'Rolla Quiz.">
+    <link rel="icon" href="images/logo.png" type="image/png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class="crt" aria-hidden="true"></div>
+
+<header class="header">
+    <div class="wrap header-inner">
+
+        <a class="brand" href="index.html#home">
+            <img src="images/logo.png" alt="Rock'n'Rolla" class="brand-img">
+            <span class="brand-fallback">ROCK'N'ROLLA</span>
+        </a>
+
+        <button class="burger" id="burger" aria-label="Меню" aria-expanded="false">
+            <span></span><span></span><span></span>
+        </button>
+
+        <nav class="nav" id="nav">
+
+            <div class="nav-dropdown">
+                <button class="nav-main-button" id="mainMenuButton" aria-expanded="false">
+                    ГЛАВНАЯ <span class="nav-arrow">▼</span>
+                </button>
+
+                <div class="nav-dropdown-content" id="mainDropdown">
+                    <a href="index.html#home">ГЛАВНАЯ</a>
+                    <a href="index.html#games">БЛИЖАЙШИЕ ИГРЫ</a>
+                    <a href="index.html#fame">НАШИ ПОБЕДИТЕЛИ</a>
+                    <a href="index.html#quiz">ПРОБНАЯ ИГРА</a>
+                    <a href="index.html#about">О НАС</a>
+                </div>
+            </div>
+
+            <a href="news-public.html">НОВОСТИ</a>
+            <a href="all-time.html">ЛУЧШИЕ КОМАНДЫ</a>
+            <a href="gallery.html" class="active">ГАЛЕРЕЯ</a>
+
+        </nav>
+    </div>
+</header>
+
+<main class="section gallery-page">
+    <div class="wrap">
+
+        <a href="index.html" class="btn btn-ghost gallery-back">
+            ← НА ГЛАВНУЮ
+        </a>
+
+        <h1 class="sec-title reveal">ГАЛЕРЕЯ</h1>
+
+        <p class="gallery-page-subtitle">
+            МОМЕНТЫ НАШИХ ИГР
+        </p>
+
+        <div class="gallery" id="galleryGrid">
+            <div class="gallery-empty">ЗАГРУЗКА...</div>
+        </div>
+
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="wrap">
+        <p class="foot-logo">ROCK'N'ROLLA</p>
+        <p class="foot-sub">КВИЗЫ ПО РОКУ • КИНО • МУЗЫКЕ<br>МИНСК</p>
+
+        <div class="foot-links">
+            <a href="https://t.me/rnr_quiz" target="_blank" rel="noopener">TELEGRAM</a>
+            <a href="https://www.instagram.com/rnr_quiz/" target="_blank" rel="noopener">INSTAGRAM</a>
+            <a href="https://www.tiktok.com/@rnr_quiz?_r=1&_t=ZS-9B2el8SLFX0" target="_blank" rel="noopener">TIKTOK</a>
+        </div>
+
+        <p class="copy">© <span id="year"></span> ROCK'N'ROLLA QUIZ</p>
+    </div>
+</footer>
+
+<!-- ПРОСМОТР ФОТО -->
+<div class="lightbox hidden" id="lightbox" role="dialog" aria-modal="true" aria-label="Просмотр фото">
+    <button class="lb-close" id="lbClose" aria-label="Закрыть">×</button>
+    <button class="lb-nav prev" id="lbPrev" aria-label="Назад">‹</button>
+    <img id="lbImg" src="" alt="">
+    <button class="lb-nav next" id="lbNext" aria-label="Вперёд">›</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/theme.js"></script>
+<script src="script.js?v=2"></script>
+
+<script>
+const mainMenuButton = document.getElementById("mainMenuButton");
+const mainDropdown = document.getElementById("mainDropdown");
+
+mainMenuButton.addEventListener("click", function(event) {
+    event.stopPropagation();
+    mainDropdown.classList.toggle("open");
+    mainMenuButton.setAttribute(
+        "aria-expanded",
+        mainDropdown.classList.contains("open")
+    );
+});
+
+document.addEventListener("click", function(event) {
+    if (!event.target.closest(".nav-dropdown")) {
+        mainDropdown.classList.remove("open");
+        mainMenuButton.setAttribute("aria-expanded", "false");
+    }
+});
+
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+        mainDropdown.classList.remove("open");
+        mainMenuButton.setAttribute("aria-expanded", "false");
+    }
+});
+</script>
+
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script>
+
+</body>
+</html>

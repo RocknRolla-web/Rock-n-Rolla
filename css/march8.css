@@ -1,0 +1,97 @@
+/* ===== ROCK'N'ROLLA — MARCH 8 THEME ===== */
+
+body.march8-theme {
+    --bg: #160d19;
+    --bg2: #28152a;
+    --amber: #f08ab5;
+    --amber-soft: #f6a8c9;
+    --yellow: #f9d5e7;
+    --red: #c45b91;
+    --green: #83b99a;
+    --white: #fff7fb;
+    --grey: #c7aebe;
+    --line: #56334f;
+    --purple: #a56acb;
+
+    background: var(--bg) !important;
+    color: var(--white) !important;
+}
+
+body.march8-theme h1,
+body.march8-theme h2,
+body.march8-theme h3,
+body.march8-theme .sec-title,
+body.march8-theme .quiz-logo {
+    color: var(--amber) !important;
+}
+
+body.march8-theme .header,
+body.march8-theme .footer,
+body.march8-theme .news-header,
+body.march8-theme .leaderboard-header {
+    background: var(--bg2) !important;
+    border-color: var(--red) !important;
+}
+
+body.march8-theme .event-card,
+body.march8-theme .fame-card,
+body.march8-theme .news-card,
+body.march8-theme .about,
+body.march8-theme .cabinet,
+body.march8-theme .screen,
+body.march8-theme .leaderboard-card {
+    background-color: var(--bg2) !important;
+    border-color: var(--line) !important;
+    color: var(--white) !important;
+}
+
+body.march8-theme .btn,
+body.march8-theme button,
+body.march8-theme .nav-contact-button {
+    border-color: var(--amber) !important;
+}
+
+body.march8-theme .btn-primary {
+    background: var(--red) !important;
+    color: #ffffff !important;
+}
+
+body.march8-theme a {
+    color: var(--amber);
+}
+
+body.march8-theme .pixel,
+body.march8-theme .blink {
+    color: var(--yellow) !important;
+}
+
+body.march8-theme input,
+body.march8-theme textarea,
+body.march8-theme select {
+    background: var(--bg) !important;
+    color: var(--white) !important;
+    border-color: var(--line) !important;
+}
+
+body.march8-theme .hero-grid {
+    background:
+        radial-gradient(60% 50% at 50% 20%, rgba(240,138,181,.20), transparent 70%),
+        linear-gradient(transparent 96%, rgba(240,138,181,.10) 96%) 0 0/100% 34px,
+        linear-gradient(90deg, transparent 96%, rgba(240,138,181,.08) 96%) 0 0/34px 100%;
+}
+
+/* Цветочные лепестки */
+#march8Petals {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #march8Petals {
+        display: none;
+    }
+}

@@ -1,0 +1,111 @@
+/* ===== ROCK'N'ROLLA — CHRISTMAS THEME ===== */
+
+body.christmas-theme {
+    --bg: #605CCF;
+    --bg2: #4F4BB5;
+    --main-color: #F6CF66;
+    --accent-color: #ED471C;
+    --text-color: #FBFBFB;
+    --background-color: #605CCF;
+
+    background: #605CCF !important;
+    background-color: #605CCF !important;
+    color: #FBFBFB !important;
+}
+
+/* Заголовки */
+body.christmas-theme h1,
+body.christmas-theme h2,
+body.christmas-theme h3,
+body.christmas-theme .sec-title,
+body.christmas-theme .quiz-logo {
+    color: var(--amber) !important;
+}
+
+/* Шапка и подвал */
+body.christmas-theme .header,
+body.christmas-theme .footer,
+body.christmas-theme .news-header,
+body.christmas-theme .leaderboard-header {
+    background: var(--bg2) !important;
+    border-color: var(--red) !important;
+}
+
+/* Карточки */
+body.christmas-theme .event-card,
+body.christmas-theme .fame-card,
+body.christmas-theme .news-card,
+body.christmas-theme .about,
+body.christmas-theme .cabinet,
+body.christmas-theme .screen,
+body.christmas-theme .leaderboard-card {
+    background-color: var(--bg2) !important;
+    border-color: var(--line) !important;
+    color: var(--white) !important;
+}
+
+/* Кнопки */
+body.christmas-theme .btn,
+body.christmas-theme button,
+body.christmas-theme .nav-contact-button {
+    border-color: var(--amber) !important;
+}
+
+body.christmas-theme .btn-primary {
+    background: var(--red) !important;
+    color: #ffffff !important;
+}
+
+/* Ссылки и акценты */
+body.christmas-theme a {
+    color: var(--amber) ;
+}
+
+body.christmas-theme .pixel,
+body.christmas-theme .blink {
+    color: var(--yellow) !important;
+}
+
+/* Поля ввода */
+body.christmas-theme input,
+body.christmas-theme textarea,
+body.christmas-theme select {
+    background: var(--bg) !important;
+    color: var(--white) !important;
+    border-color: var(--line) !important;
+}
+
+/* Сетка главного экрана */
+body.christmas-theme .hero-grid {
+    background:
+        radial-gradient(60% 50% at 50% 20%, rgba(224,165,43,.20), transparent 70%),
+        linear-gradient(transparent 96%, rgba(224,165,43,.10) 96%) 0 0/100% 34px,
+        linear-gradient(90deg, transparent 96%, rgba(224,165,43,.08) 96%) 0 0/34px 100%;
+}
+
+/* Слой снега */
+#christmasSnow {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #christmasSnow {
+        display: none;
+    }
+}
+
+/* ===== NEW YEAR PURPLE BACKGROUND ===== */
+
+body.christmas-theme,
+body.christmas-theme main,
+body.christmas-theme .hero,
+body.christmas-theme .section,
+body.christmas-theme .about,
+body.christmas-theme .footer {
+    background-color: #605CCF !important;
+}

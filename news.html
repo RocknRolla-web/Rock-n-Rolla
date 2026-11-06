@@ -1,0 +1,561 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock'n'Rolla — Новости</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/theme.js"></script>
+</head>
+<body class="news-admin-page">
+
+<header class="news-header">
+    <h1 class="news-brand">ROCK'N'ROLLA — НОВОСТИ</h1>
+    <a href="dashboard.html" class="news-back">← Назад в панель</a>
+</header>
+
+<main class="news-admin-main">
+
+    <div class="news-admin-section">
+        <h2 id="formTitle">Добавить новость</h2>
+
+        <label for="newsTitle">Заголовок</label>
+        <input id="newsTitle" type="text"
+               placeholder="Например: Новый сезон Rock'n'Rolla">
+
+        <label for="newsContent">Текст новости</label>
+        <textarea id="newsContent"
+                  placeholder="Напиши текст новости..."></textarea>
+
+        <!-- ВИДЕО -->
+<label for="newsImage">Видео новости (необязательно)</label>
+<input
+    id="newsImage"
+    type="file"
+    accept="video/quicktime,video/mp4,video/webm"
+>
+
+<video
+    id="videoPreview"
+    class="news-admin-preview"
+    controls
+    playsinline
+    style="display:none"
+></video>
+
+<!-- ОБЛОЖКА -->
+<label for="newsCover">Обложка новости</label>
+<input
+    id="newsCover"
+    type="file"
+    accept="image/jpeg,image/png,image/webp,image/gif"
+>
+
+<img
+    id="imagePreview"
+    class="news-admin-preview"
+    style="display:none"
+>
+
+        <div class="actions">
+            <button class="primary" id="publishBtn">
+                Опубликовать
+            </button>
+
+            <button class="secondary" id="draftBtn">
+                Сохранить черновик
+            </button>
+
+            <button class="secondary" id="cancelBtn" style="display:none">
+                Отмена
+            </button>
+        </div>
+
+        <p id="status"></p>
+    </div>
+
+    <div class="section">
+        <h2>Все новости</h2>
+
+<input
+    type="text"
+    id="newsSearch"
+    placeholder="Поиск по названию новости..."
+>
+
+<div style="margin: 15px 0;">
+    <select id="newsFilter">
+        <option value="all">Все новости</option>
+        <option value="published">Опубликованные</option>
+        <option value="draft">Черновики</option>
+    </select>
+</div>
+
+<div class="news-list" id="newsList">
+            Загрузка новостей...
+        </div>
+    </div>
+
+</main>
+
+<script>
+const BUCKET = "news-images";
+
+let editingId = null;
+
+let oldImageUrl = null;
+let oldVideoUrl = null;
+
+let selectedImage = null;
+let selectedCover = null;
+
+let allNews = [];
+
+const titleInput = document.getElementById("newsTitle");
+const contentInput = document.getElementById("newsContent");
+const imageInput = document.getElementById("newsImage");
+const coverInput = document.getElementById("newsCover");
+
+const imagePreview = document.getElementById("imagePreview");
+const videoPreview = document.getElementById("videoPreview");
+const statusBox = document.getElementById("status");
+const newsList = document.getElementById("newsList");
+
+function setStatus(message) {
+    statusBox.textContent = message;
+}
+
+function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    })[char]);
+}
+
+async function checkAccess() {
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    const { data: profile, error: profileError } =
+        await supabaseClient
+            .from("profiles")
+            .select("role")
+            .eq("user_id", data.user.id)
+            .single();
+
+    if (profileError || !profile ||
+        !["owner", "admin", "editor"].includes(profile.role)) {
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    return true;
+}
+
+// ВЫБОР ВИДЕО
+imageInput.addEventListener("change", function () {
+    selectedImage = this.files[0] || null;
+
+    videoPreview.style.display = "none";
+
+    if (!selectedImage) return;
+
+    if (!selectedImage.type.startsWith("video/")) {
+        setStatus("Выбери видеофайл MOV, MP4 или WebM.");
+        this.value = "";
+        selectedImage = null;
+        return;
+    }
+
+    videoPreview.src = URL.createObjectURL(selectedImage);
+    videoPreview.style.display = "block";
+});
+
+// ВЫБОР ОБЛОЖКИ
+coverInput.addEventListener("change", function () {
+    selectedCover = this.files[0] || null;
+
+    imagePreview.style.display = "none";
+
+    if (!selectedCover) return;
+
+    if (!selectedCover.type.startsWith("image/")) {
+        setStatus("Выбери изображение JPG, PNG, WebP или GIF.");
+        this.value = "";
+        selectedCover = null;
+        return;
+    }
+
+    imagePreview.src = URL.createObjectURL(selectedCover);
+    imagePreview.style.display = "block";
+});
+async function uploadMedia(file) {
+    if (!file) return null;
+
+    const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "video/quicktime",
+        "video/mp4",
+        "video/webm"
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+        throw new Error("Выбери JPG, PNG, WebP, GIF, MOV, MP4 или WebM.");
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+        throw new Error("Размер файла не должен превышать 100 МБ.");
+    }
+
+    const extension = file.name.split(".").pop().toLowerCase();
+    const fileName = crypto.randomUUID() + "." + extension;
+
+    const { error } = await supabaseClient.storage
+        .from(BUCKET)
+        .upload(fileName, file, {
+            upsert: false,
+            contentType: file.type
+        });
+
+    if (error) throw error;
+
+    const { data } = supabaseClient.storage
+        .from(BUCKET)
+        .getPublicUrl(fileName);
+
+    return data.publicUrl;
+}
+
+async function loadNews() {
+    newsList.textContent = "Загрузка...";
+
+    const { data, error } = await supabaseClient
+        .from("news")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        newsList.textContent = "Ошибка загрузки: " + error.message;
+        return;
+    }
+
+    allNews = data || [];
+    renderNews();
+}
+
+function renderNews() {
+    const search = document.getElementById("newsSearch")
+        .value.toLowerCase();
+
+    const filter = document.getElementById("newsFilter").value;
+
+    const filtered = allNews.filter(news => {
+        const matchesSearch = news.title.toLowerCase().includes(search);
+
+        const matchesFilter =
+            filter === "all" ||
+            (filter === "published" && news.is_published) ||
+            (filter === "draft" && !news.is_published);
+
+        return matchesSearch && matchesFilter;
+    });
+
+    newsList.replaceChildren();
+
+    if (filtered.length === 0) {
+        newsList.textContent = "Ничего не найдено.";
+        return;
+    }
+
+    filtered.forEach(news => {
+        const item = document.createElement("div");
+        item.className = "news-admin-item";
+
+        const image = document.createElement("img");
+        image.alt = "Обложка новости";
+
+        if (news.cover_image_url) {
+            image.src = news.cover_image_url;
+        } else {
+            image.style.display = "none";
+        }
+
+        const info = document.createElement("div");
+        info.className = "news-admin-info";
+
+        const heading = document.createElement("h3");
+        heading.textContent = news.title;
+
+        const date = document.createElement("p");
+        date.textContent = new Date(news.created_at)
+            .toLocaleString("ru-RU");
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = news.is_published
+            ? "● ОПУБЛИКОВАНО"
+            : "● ЧЕРНОВИК";
+
+        info.append(heading, date, badge);
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const edit = document.createElement("button");
+        edit.className = "secondary";
+        edit.textContent = "Изменить";
+        edit.onclick = () => editNews(news);
+
+        const toggle = document.createElement("button");
+        toggle.className = "primary";
+        toggle.textContent = news.is_published
+            ? "Снять с публикации"
+            : "Опубликовать";
+        toggle.onclick = () => togglePublish(news);
+
+        const remove = document.createElement("button");
+        remove.className = "danger";
+        remove.textContent = "Удалить";
+        remove.onclick = () => deleteNews(news);
+
+        actions.append(edit, toggle, remove);
+        item.append(image, info, actions);
+        newsList.appendChild(item);
+    });
+}
+
+async function saveNews(published) {
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title || !content) {
+        setStatus("Заполни заголовок и текст новости.");
+        return;
+    }
+
+    const publishBtn = document.getElementById("publishBtn");
+    const draftBtn = document.getElementById("draftBtn");
+
+    publishBtn.disabled = true;
+    draftBtn.disabled = true;
+
+    try {
+        setStatus("Сохранение новости...");
+
+        let imageUrl = oldImageUrl;
+        let videoUrl = oldVideoUrl;
+
+        // Загружаем обложку
+        if (selectedCover) {
+            imageUrl = await uploadMedia(selectedCover);
+        }
+
+        // Загружаем видео
+        if (selectedImage) {
+            videoUrl = await uploadMedia(selectedImage);
+        }
+
+        const values = {
+            title,
+            content,
+            cover_image_url: imageUrl,
+            video_url: videoUrl,
+            is_published: published,
+            updated_at: new Date().toISOString()
+        };
+
+        let result;
+
+        if (editingId) {
+            result = await supabaseClient
+                .from("news")
+                .update(values)
+                .eq("id", editingId);
+        } else {
+            result = await supabaseClient
+                .from("news")
+                .insert(values);
+        }
+
+        if (result.error) throw result.error;
+
+        setStatus("Новость успешно сохранена!");
+
+        resetForm();
+        await loadNews();
+
+    } catch (error) {
+        setStatus("Ошибка: " + error.message);
+    } finally {
+        publishBtn.disabled = false;
+        draftBtn.disabled = false;
+    }
+}
+
+
+function editNews(news) {
+    editingId = news.id;
+
+    oldImageUrl = news.cover_image_url || null;
+    oldVideoUrl = news.video_url || null;
+
+    selectedImage = null;
+    selectedCover = null;
+
+    titleInput.value = news.title;
+    contentInput.value = news.content;
+
+    imageInput.value = "";
+    coverInput.value = "";
+
+    imagePreview.style.display = "none";
+    videoPreview.style.display = "none";
+
+    if (oldImageUrl) {
+        imagePreview.src = oldImageUrl;
+        imagePreview.style.display = "block";
+    }
+
+    if (oldVideoUrl) {
+        videoPreview.src = oldVideoUrl;
+        videoPreview.style.display = "block";
+    }
+
+    document.getElementById("formTitle").textContent =
+        "Редактирование новости";
+
+    document.getElementById("publishBtn").textContent =
+        "Сохранить и опубликовать";
+
+    document.getElementById("draftBtn").textContent =
+        "Сохранить как черновик";
+
+    document.getElementById("cancelBtn").style.display =
+        "inline-block";
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// СБРОС ФОРМЫ
+function resetForm() {
+    editingId = null;
+
+    oldImageUrl = null;
+    oldVideoUrl = null;
+
+    selectedImage = null;
+    selectedCover = null;
+
+    titleInput.value = "";
+    contentInput.value = "";
+
+    imageInput.value = "";
+    coverInput.value = "";
+
+    imagePreview.src = "";
+    imagePreview.style.display = "none";
+
+    videoPreview.pause();
+    videoPreview.src = "";
+    videoPreview.style.display = "none";
+
+    document.getElementById("formTitle").textContent =
+        "Добавить новость";
+
+    document.getElementById("publishBtn").textContent =
+        "Опубликовать";
+
+    document.getElementById("draftBtn").textContent =
+        "Сохранить черновик";
+
+    document.getElementById("cancelBtn").style.display =
+        "none";
+
+    setStatus("");
+}
+
+// СНЯТИЕ С ПУБЛИКАЦИИ / ПУБЛИКАЦИЯ
+async function togglePublish(news) {
+    const { error } = await supabaseClient
+        .from("news")
+        .update({
+            is_published: !news.is_published,
+            updated_at: new Date().toISOString()
+        })
+        .eq("id", news.id);
+
+    if (error) {
+        alert("Ошибка: " + error.message);
+        return;
+    }
+
+    await loadNews();
+}
+
+// УДАЛЕНИЕ НОВОСТИ
+async function deleteNews(news) {
+    if (!confirm("Удалить новость «" + news.title + "»?")) {
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("news")
+        .delete()
+        .eq("id", news.id);
+
+    if (error) {
+        alert("Ошибка: " + error.message);
+        return;
+    }
+
+    await loadNews();
+}
+
+// КНОПКИ
+document.getElementById("publishBtn").onclick =
+    () => saveNews(true);
+
+document.getElementById("draftBtn").onclick =
+    () => saveNews(false);
+
+document.getElementById("cancelBtn").onclick =
+    resetForm;
+
+// ПОИСК И ФИЛЬТР
+document.getElementById("newsSearch")
+    .addEventListener("input", renderNews);
+
+document.getElementById("newsFilter")
+    .addEventListener("change", renderNews);
+
+// ЗАПУСК АДМИН-ПАНЕЛИ
+(async function init() {
+    const allowed = await checkAccess();
+
+    if (allowed) {
+        await loadNews();
+    }
+})();
+</script>
+
+</body>
+</html>

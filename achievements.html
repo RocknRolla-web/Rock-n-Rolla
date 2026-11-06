@@ -1,0 +1,238 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Достижения — Rock'n'Rolla</title>
+    <link rel="icon" type="image/png" href="images/faviconadmin.png">
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #0b0b0b;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        header {
+            padding: 20px 5%;
+            background: #151515;
+            border-bottom: 2px solid #ff9d00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        header h2 { color: #ff9d00; margin: 0; }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 18px;
+            font-weight: bold;
+            background: #ff9d00;
+            color: #111;
+        }
+
+        main {
+            width: 90%;
+            max-width: 1100px;
+            margin: 40px auto;
+        }
+
+        .description { color: #aaa; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 18px;
+            margin-top: 30px;
+        }
+
+        .achievement {
+            background: #171717;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 25px;
+            min-height: 175px;
+        }
+
+        .achievement.unlocked {
+            border-color: #ff9d00;
+            box-shadow: 0 0 18px #ff9d0015;
+        }
+
+        .achievement.locked {
+            opacity: .4;
+            filter: grayscale(1);
+        }
+
+        .achievement .icon {
+            font-size: 35px;
+            margin-bottom: 15px;
+        }
+
+        .achievement h3 {
+            color: #ff9d00;
+            margin: 0 0 10px;
+        }
+
+        .achievement p {
+            color: #aaa;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .achievement small {
+            display: block;
+            margin-top: 15px;
+            color: #ff9d00;
+        }
+
+        #status { color: #ff9d00; }
+
+        @media(max-width: 600px) {
+            header { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h2>🏆 ДОСТИЖЕНИЯ</h2>
+    <button onclick="location.href='dashboard.html'">НАЗАД</button>
+</header>
+
+<main>
+    <h1>Коллекция достижений</h1>
+    <p class="description" id="userInfo">Загрузка профиля...</p>
+    <p id="status">Загружаем достижения...</p>
+    <div class="grid" id="achievements"></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+
+<script>
+    async function loadAchievements() {
+        const status = document.getElementById("status");
+
+        const { data, error } = await supabaseClient.auth.getUser();
+
+        if (error || !data.user) {
+            window.location.href = "admin.html";
+            return;
+        }
+
+        const user = data.user;
+
+        const { data: profile, error: profileError } =
+            await supabaseClient
+                .from("profiles")
+                .select("display_name, role")
+                .eq("user_id", user.id)
+                .single();
+
+        if (profileError || !profile ||
+            !["owner", "admin", "editor"].includes(profile.role)) {
+            window.location.href = "admin.html";
+            return;
+        }
+
+        document.getElementById("userInfo").textContent =
+            "Администратор: " +
+            (profile.display_name || "Без имени");
+
+        const { data: catalog, error: catalogError } =
+            await supabaseClient
+                .from("admin_achievements")
+                .select("*")
+                .order("created_at");
+
+        if (catalogError) {
+            status.textContent = "Ошибка загрузки каталога достижений.";
+            console.error(catalogError);
+            return;
+        }
+
+        const { data: earned, error: earnedError } =
+            await supabaseClient
+                .from("admin_user_achievements")
+                .select("achievement_code, unlocked_at")
+                .eq("user_id", user.id);
+
+        if (earnedError) {
+            status.textContent = "Ошибка загрузки полученных достижений.";
+            console.error(earnedError);
+            return;
+        }
+
+        const earnedMap = new Map(
+            (earned || []).map(item => [
+                item.achievement_code,
+                item.unlocked_at
+            ])
+        );
+
+        const container = document.getElementById("achievements");
+
+        container.innerHTML = "";
+
+        (catalog || []).forEach(item => {
+            const unlocked = earnedMap.has(item.code);
+
+            const card = document.createElement("div");
+            card.className = "achievement " +
+                (unlocked ? "unlocked" : "locked");
+
+            const icon = document.createElement("div");
+            icon.className = "icon";
+            icon.textContent = unlocked ? item.icon : "🔒";
+
+            const title = document.createElement("h3");
+            title.textContent = item.title;
+
+            const description = document.createElement("p");
+            description.textContent = item.description;
+
+            card.append(icon, title, description);
+
+            const date = document.createElement("small");
+date.textContent = unlocked
+    ? "Получено: " + new Date(
+        earnedMap.get(item.code)
+      ).toLocaleString("ru-RU", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+          timeZone: "Europe/Minsk"
+      })
+    : "Пока не получено";
+
+            card.appendChild(date);
+            container.appendChild(card);
+        });
+
+        const count = earnedMap.size;
+        status.textContent =
+            "Открыто достижений: " + count + " из " +
+            (catalog || []).length;
+    }
+
+
+
+    loadAchievements();
+</script>
+
+</body>
+</html>

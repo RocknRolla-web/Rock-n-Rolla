@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Достижения — Rock'n'Rolla</title>
+
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            min-height: 100vh;
+        }
+
+        .achievements-page {
+            width: min(1150px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 35px 0 70px;
+        }
+
+        .achievement-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 45px;
+            flex-wrap: wrap;
+        }
+
+        .achievement-logo {
+            height: 55px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 13px 17px;
+            border: 1px solid var(--amber, #ff8a00);
+            color: var(--amber, #ff8a00);
+            text-decoration: none;
+            font-family: var(--pixel);
+            font-size: 10px;
+            transition: .2s;
+        }
+
+        .back-home:hover {
+            background: var(--amber, #ff8a00);
+            color: #111;
+            box-shadow: 0 0 18px rgba(255,138,0,.3);
+        }
+
+        .achievements-header {
+            text-align: center;
+            margin-bottom: 45px;
+        }
+
+        .achievement-kicker {
+            color: var(--amber, #ff8a00);
+            font-family: var(--pixel);
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+
+        .achievements-header h1 {
+            color: #fff;
+            font-family: var(--pixel);
+            font-size: clamp(19px, 4vw, 34px);
+            line-height: 1.6;
+            margin: 0 0 15px;
+            text-shadow: 0 0 18px rgba(255,138,0,.2);
+        }
+
+        .achievements-header > p {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .achievements-progress {
+            max-width: 580px;
+            margin: 35px auto 0;
+            padding: 22px;
+            background: rgba(15,15,15,.92);
+            border: 1px solid #383838;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .progress-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+            font-family: var(--pixel);
+            font-size: 10px;
+        }
+
+        #achievementProgress {
+            color: var(--amber, #ff8a00);
+        }
+
+        .achievements-progress-bar {
+            height: 10px;
+            background: #292929;
+            overflow: hidden;
+            margin-top: 17px;
+            border-radius: 2px;
+        }
+
+        .achievements-progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff7600, #ffd04b);
+            box-shadow: 0 0 12px rgba(255,138,0,.5);
+            transition: width .6s ease;
+        }
+
+        #achievementProgressText {
+            color: #888;
+            font-size: 12px;
+            text-align: center;
+            margin: 14px 0 0;
+        }
+
+        .collection-label {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 45px 0 20px;
+            color: var(--amber, #ff8a00);
+            font-family: var(--pixel);
+            font-size: 12px;
+        }
+
+        .collection-label::after {
+            content: "";
+            height: 1px;
+            flex: 1;
+            background: #393939;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 18px;
+        }
+
+        .achievement-card {
+            position: relative;
+            padding: 24px 16px 20px;
+            min-width: 0;
+            background: linear-gradient(145deg, #191919, #101010);
+            border: 1px solid #333;
+            border-radius: 7px;
+            text-align: center;
+            overflow: hidden;
+            transition: transform .2s, border-color .2s, box-shadow .2s;
+        }
+
+        .achievement-card:hover {
+            transform: translateY(-4px);
+            border-color: #777;
+        }
+
+        .achievement-card.unlocked {
+            border-color: rgba(255,138,0,.7);
+            box-shadow: inset 0 0 25px rgba(255,138,0,.04);
+        }
+
+        .achievement-card.unlocked::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 15%;
+            width: 70%;
+            height: 2px;
+            background: var(--amber, #ff8a00);
+            box-shadow: 0 0 12px var(--amber, #ff8a00);
+        }
+
+        .achievement-card img {
+    display: block;
+    width: 115px;
+    height: 115px;
+    object-fit: contain;
+    margin: 0 auto 12px;
+}
+
+        .achievement-card.locked img {
+            filter: grayscale(1);
+            opacity: .22;
+        }
+
+        .achievement-card h3 {
+            color: #fff;
+            font-size: 15px;
+            margin: 8px 0 12px;
+        }
+
+        .achievement-card p {
+            color: #999;
+            font-size: 12px;
+            line-height: 1.6;
+            min-height: 40px;
+        }
+
+        .achievement-rarity {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 7px 10px;
+            border: 1px solid #444;
+            color: #aaa;
+            font-family: var(--pixel);
+            font-size: 8px;
+            border-radius: 2px;
+        }
+
+        .achievement-card.unlocked .achievement-rarity {
+            border-color: var(--amber, #ff8a00);
+            color: var(--amber, #ff8a00);
+        }
+
+        .achievement-card[data-rarity="legendary"].unlocked {
+            border-color: #e5b84b;
+            box-shadow: inset 0 0 25px rgba(229,184,75,.07);
+        }
+
+        .achievement-card[data-rarity="epic"].unlocked {
+            border-color: #aa72e8;
+        }
+
+        .achievement-card[data-rarity="rare"].unlocked {
+            border-color: #5d9de0;
+        }
+
+        .achievement-status {
+            margin-top: 17px;
+            color: #777;
+            font-family: var(--pixel);
+            font-size: 8px;
+        }
+
+        .achievement-card.unlocked .achievement-status {
+            color: #35d07f;
+        }
+
+        .achievements-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #aaa;
+            padding: 30px;
+        }
+
+        .achievement-footer {
+            margin-top: 55px;
+            padding-top: 20px;
+            border-top: 1px solid #292929;
+            color: #666;
+            text-align: center;
+            font-family: var(--pixel);
+            font-size: 8px;
+            line-height: 2;
+        }
+
+        @media (max-width: 600px) {
+            .achievements-page {
+                padding-top: 20px;
+            }
+
+            .achievement-topbar {
+                margin-bottom: 35px;
+            }
+
+            .achievement-logo {
+                height: 42px;
+            }
+
+            .back-home {
+                font-size: 8px;
+                padding: 11px;
+            }
+
+            .achievements-progress {
+                padding: 17px;
+            }
+
+            .progress-top {
+                font-size: 8px;
+            }
+
+            .achievements-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .achievement-card {
+                padding: 17px 9px;
+            }
+
+            .achievement-card img {
+    width: 85px;
+    height: 85px;
+    margin: 0 auto 12px;
+}
+
+            .achievement-card h3 {
+                font-size: 12px;
+            }
+
+            .achievement-card p {
+                font-size: 11px;
+            }
+
+            .achievement-rarity,
+            .achievement-status {
+                font-size: 7px;
+            }
+        }
+
+        @media (max-width: 350px) {
+            .achievements-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="crt" aria-hidden="true"></div>
+
+<main class="achievements-page">
+
+    <div class="achievement-topbar">
+        <a href="index.html">
+            <img src="images/logo.png" alt="Rock'n'Rolla" class="achievement-logo">
+        </a>
+
+        <a href="index.html" class="back-home">
+            ← НА ГЛАВНУЮ
+        </a>
+    </div>
+
+    <header class="achievements-header">
+        <div class="achievement-kicker">ROCK'N'ROLLA // PLAYER PROFILE</div>
+
+        <h1>ACHIEVEMENT ROOM</h1>
+
+        <p>Собирай награды. Открывай секреты. Стань легендой.</p>
+
+        <div class="achievements-progress">
+            <div class="progress-top">
+                <span>YOUR COLLECTION</span>
+                <strong id="achievementProgress">0 / 0</strong>
+            </div>
+
+            <div class="achievements-progress-bar">
+                <div class="achievements-progress-fill" id="achievementProgressFill"></div>
+            </div>
+
+            <p id="achievementProgressText">Коллекция только начинается!</p>
+        </div>
+    </header>
+
+    <div class="collection-label">
+        TROPHY COLLECTION
+    </div>
+
+    <section class="achievements-grid" id="achievementsGrid">
+        <div class="achievements-empty">ЗАГРУЗКА ДОСТИЖЕНИЙ...</div>
+    </section>
+
+    <footer class="achievement-footer">
+        ROCK'N'ROLLA QUIZ<br>
+        
+    </footer>
+
+</main>
+
+<script src="js/achievements-data.js"></script>
+<script src="js/achievements.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var grid = document.getElementById("achievementsGrid");
+
+    if (!window.RNRAchievements) {
+        grid.innerHTML =
+            '<div class="achievements-empty">ОШИБКА ЗАГРУЗКИ ДОСТИЖЕНИЙ</div>';
+        return;
+    }
+
+    var progress = window.RNRAchievements.getProgress();
+    var achievements = window.RNRAchievements.getAchievements();
+
+    document.getElementById("achievementProgress").textContent =
+        progress.unlocked + " / " + progress.total;
+
+    var percent = progress.total
+        ? (progress.unlocked / progress.total) * 100
+        : 0;
+
+    document.getElementById("achievementProgressFill").style.width =
+        percent + "%";
+
+    document.getElementById("achievementProgressText").textContent =
+        progress.unlocked === progress.total
+            ? "КОЛЛЕКЦИЯ ПОЛНОСТЬЮ СОБРАНА!"
+            : "ПРОДОЛЖАЙ ИГРАТЬ, ЧТОБЫ СОБРАТЬ ВСЕ НАГРАДЫ!";
+
+    grid.innerHTML = "";
+
+    achievements.forEach(function (item) {
+        var secretHidden = item.secret && !item.unlocked;
+
+        var card = document.createElement("article");
+        card.className = "achievement-card " +
+            (item.unlocked ? "unlocked" : "locked");
+
+        card.dataset.rarity = item.rarity || "common";
+
+        var image = document.createElement("img");
+        image.src = item.image;
+        image.alt = secretHidden ? "Секретное достижение" : item.title;
+        image.loading = "lazy";
+
+        image.onerror = function () {
+            this.style.visibility = "hidden";
+        };
+
+        var title = document.createElement("h3");
+        title.textContent = secretHidden ? "???" : item.title;
+
+        var description = document.createElement("p");
+        description.textContent = secretHidden
+            ? "Секретное достижение. Попробуй его открыть!"
+            : item.description;
+
+        var rarity = document.createElement("span");
+        rarity.className = "achievement-rarity";
+
+        var rarityNames = {
+            common: "ОБЫЧНОЕ",
+            rare: "РЕДКОЕ",
+            epic: "ЭПИЧЕСКОЕ",
+            legendary: "ЛЕГЕНДАРНОЕ"
+        };
+
+        rarity.textContent =
+            rarityNames[item.rarity] || item.rarity || "НАГРАДА";
+
+        var status = document.createElement("div");
+        status.className = "achievement-status";
+        status.textContent = item.unlocked
+            ? "✓ ПОЛУЧЕНО"
+            : "🔒 НЕ ПОЛУЧЕНО";
+
+        card.appendChild(image);
+        card.appendChild(title);
+        card.appendChild(description);
+        card.appendChild(rarity);
+        card.appendChild(status);
+
+        grid.appendChild(card);
+    });
+});
+</script>
+
+</body>
+</html>

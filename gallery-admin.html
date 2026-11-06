@@ -1,0 +1,517 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление галереей — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #101010;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #999;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: #1b1b1b;
+            border: 1px solid #333;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+
+        input, select, button {
+            font: inherit;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 13px;
+            margin: 10px 0;
+            color: white;
+            background: #292929;
+            border: 1px solid #444;
+            border-radius: 8px;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin: 18px 0;
+            max-width: 100%;
+        }
+
+        button {
+            padding: 11px 17px;
+            border: 0;
+            border-radius: 8px;
+            background: #e33b3b;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: .85;
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: wait;
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 18px;
+        }
+
+        .media-card {
+            overflow: hidden;
+            background: #222;
+            border: 1px solid #383838;
+            border-radius: 12px;
+        }
+
+        .media-card img,
+        .media-card video {
+            display: block;
+            width: 100%;
+            height: 170px;
+            object-fit: cover;
+            background: #080808;
+        }
+
+        .media-info {
+            padding: 13px;
+        }
+
+        .media-info input {
+            margin: 0 0 10px;
+        }
+
+        .media-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .delete-button {
+            background: #555;
+        }
+
+        .status {
+            margin-top: 15px;
+            color: #bbb;
+            white-space: pre-wrap;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #aaa;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+
+            .panel {
+                padding: 17px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <a href="dashboard.html" class="back-link">← Назад в админ-панель</a>
+
+    <h1>Галерея</h1>
+    <p class="subtitle">Управление фотографиями и видео Rock'n'Rolla</p>
+
+    <div class="panel">
+        <h2>Добавить материалы</h2>
+
+        <input
+            type="text"
+            id="mediaTitle"
+            placeholder="Название (необязательно)"
+        >
+
+        <select id="mediaType">
+            <option value="image">Фотографии</option>
+            <option value="video">Видео</option>
+        </select>
+
+        <input
+    type="file"
+    id="mediaFiles"
+    accept="image/jpeg,image/png,image/webp,image/gif"
+    multiple
+>
+
+        <button id="uploadButton" onclick="uploadFiles()">
+            Загрузить
+        </button>
+
+        <div class="status" id="uploadStatus"></div>
+    </div>
+
+    <div class="panel">
+        <h2>Материалы галереи</h2>
+        <div class="media-grid" id="mediaGrid">
+            Загрузка...
+        </div>
+    </div>
+
+</div>
+
+<script>
+const BUCKET = "gallery";
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
+
+let galleryItems = [];
+const mediaTypeSelect = document.getElementById("mediaType");
+const mediaFilesInput = document.getElementById("mediaFiles");
+
+function updateFileAccept() {
+    if (mediaTypeSelect.value === "video") {
+        mediaFilesInput.accept = "video/mp4,video/webm,video/quicktime";
+    } else {
+        mediaFilesInput.accept = "image/jpeg,image/png,image/webp,image/gif";
+    }
+
+    mediaFilesInput.value = "";
+}
+
+mediaTypeSelect.addEventListener("change", updateFileAccept);
+
+async function checkAdmin() {
+    const { data: { user }, error } =
+        await supabaseClient.auth.getUser();
+
+    if (error || !user) {
+        location.href = "login.html";
+        return false;
+    }
+
+    const { data: profile, error: profileError } =
+        await supabaseClient
+            .from("profiles")
+            .select("role")
+            .eq("user_id", user.id)
+            .single();
+
+    if (
+        profileError ||
+        !profile ||
+        !["owner", "admin", "editor"].includes(profile.role)
+    ) {
+        document.body.innerHTML =
+            "<h2>Доступ запрещён</h2><p>У вас нет прав для управления галереей.</p>";
+        return false;
+    }
+
+    return true;
+}
+
+function isValidFile(file, type) {
+    const imageExtensions = ["jpg", "jpeg", "png", "webp", "gif"];
+    const videoExtensions = ["mp4", "webm", "mov"];
+
+    if (file.size > MAX_FILE_SIZE) {
+        alert(file.name + ": файл больше 100 МБ.");
+        return false;
+    }
+
+    const extension = file.name.split(".").pop().toLowerCase();
+
+    if (type === "image") {
+        const valid =
+            file.type.startsWith("image/") &&
+            ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type);
+
+        if (!valid || !imageExtensions.includes(extension)) {
+            alert(file.name + ": неподдерживаемый формат изображения.");
+            return false;
+        }
+    } else {
+        const validMimeTypes = [
+            "video/mp4",
+            "video/webm",
+            "video/quicktime",
+            "application/mp4",
+            ""
+        ];
+
+        if (
+            !videoExtensions.includes(extension) ||
+            !validMimeTypes.includes(file.type)
+        ) {
+            alert(file.name + ": неподдерживаемый формат видео.");
+            return false;
+        }
+    }
+
+    return true;
+}
+async function uploadFiles() {
+    const files = Array.from(
+        document.getElementById("mediaFiles").files
+    );
+
+    const type = document.getElementById("mediaType").value;
+    const title = document.getElementById("mediaTitle").value.trim();
+    const button = document.getElementById("uploadButton");
+    const status = document.getElementById("uploadStatus");
+
+    if (!files.length) {
+        alert("Выбери файлы для загрузки.");
+        return;
+    }
+
+    const validFiles = files.filter(file => isValidFile(file, type));
+
+    if (!validFiles.length) return;
+
+    button.disabled = true;
+    status.textContent = "Загрузка файлов...";
+
+    let uploaded = 0;
+
+    try {
+        for (const file of validFiles) {
+            const safeName = file.name
+                .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+            const filePath =
+                Date.now() + "_" +
+                Math.random().toString(36).slice(2) +
+                "_" + safeName;
+
+            const { error: uploadError } =
+                await supabaseClient.storage
+                    .from(BUCKET)
+                    .upload(filePath, file);
+
+            if (uploadError) {
+                console.error(uploadError);
+                status.textContent +=
+                    "\nОшибка загрузки " + file.name +
+                    ": " + uploadError.message;
+                continue;
+            }
+
+            const { data: { user } } =
+                await supabaseClient.auth.getUser();
+
+            const { error: insertError } =
+                await supabaseClient
+                    .from("gallery_media")
+                    .insert({
+                        title: title || file.name,
+                        file_path: filePath,
+                        media_type: type,
+                        created_by: user.id
+                    });
+
+            if (insertError) {
+                await supabaseClient.storage
+                    .from(BUCKET)
+                    .remove([filePath]);
+
+                console.error(insertError);
+                status.textContent +=
+                    "\nОшибка сохранения " + file.name +
+                    ": " + insertError.message;
+                continue;
+            }
+
+            uploaded++;
+        }
+
+        status.textContent +=
+            "\nУспешно загружено: " + uploaded +
+            " из " + validFiles.length;
+
+        document.getElementById("mediaFiles").value = "";
+        document.getElementById("mediaTitle").value = "";
+
+        await loadGallery();
+
+    } catch (error) {
+        console.error(error);
+        status.textContent += "\nОшибка: " + error.message;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function loadGallery() {
+    const grid = document.getElementById("mediaGrid");
+
+    const { data, error } = await supabaseClient
+        .from("gallery_media")
+        .select("*")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        grid.textContent = "Ошибка загрузки: " + error.message;
+        return;
+    }
+
+    galleryItems = data || [];
+    grid.innerHTML = "";
+
+    if (!galleryItems.length) {
+        grid.textContent = "Галерея пока пустая.";
+        return;
+    }
+
+    for (const item of galleryItems) {
+        const { data: urlData } = supabaseClient.storage
+            .from(BUCKET)
+            .getPublicUrl(item.file_path);
+
+        const url = urlData.publicUrl;
+
+        const card = document.createElement("div");
+        card.className = "media-card";
+
+        const preview = document.createElement(
+            item.media_type === "video" ? "video" : "img"
+        );
+
+        preview.src = url;
+
+        if (item.media_type === "video") {
+            preview.controls = true;
+            preview.preload = "metadata";
+        } else {
+            preview.alt = item.title || "Фотография галереи";
+        }
+
+        const info = document.createElement("div");
+        info.className = "media-info";
+
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.value = item.title || "";
+        titleInput.placeholder = "Название";
+
+        const orderInput = document.createElement("input");
+        orderInput.type = "text";
+        orderInput.value = item.sort_order ?? 0;
+        orderInput.placeholder = "Порядок отображения";
+
+        const actions = document.createElement("div");
+        actions.className = "media-actions";
+
+        const saveButton = document.createElement("button");
+        saveButton.textContent = "Сохранить";
+        saveButton.onclick = () =>
+            updateItem(item.id, titleInput.value, orderInput.value);
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Удалить";
+        deleteButton.className = "delete-button";
+        deleteButton.onclick = () => deleteItem(item);
+
+        actions.append(saveButton, deleteButton);
+        info.append(titleInput, orderInput, actions);
+        card.append(preview, info);
+        grid.append(card);
+    }
+}
+
+async function updateItem(id, title, order) {
+    const { error } = await supabaseClient
+        .from("gallery_media")
+        .update({
+            title: title,
+            sort_order: Number(order) || 0
+        })
+        .eq("id", id);
+
+    if (error) {
+        alert("Ошибка сохранения: " + error.message);
+        return;
+    }
+
+    alert("Изменения сохранены.");
+    await loadGallery();
+}
+
+async function deleteItem(item) {
+    if (!confirm("Точно удалить этот материал из галереи?")) {
+        return;
+    }
+
+    const { error: deleteError } = await supabaseClient
+        .from("gallery_media")
+        .delete()
+        .eq("id", item.id);
+
+    if (deleteError) {
+        alert("Ошибка удаления: " + deleteError.message);
+        return;
+    }
+
+    const { error: storageError } = await supabaseClient.storage
+        .from(BUCKET)
+        .remove([item.file_path]);
+
+    if (storageError) {
+        console.error("Не удалось удалить файл:", storageError);
+        alert("Запись удалена, но файл в хранилище остался.");
+    }
+
+    await loadGallery();
+}
+
+async function init() {
+    const allowed = await checkAdmin();
+
+    if (allowed) {
+        await loadGallery();
+    }
+}
+
+init();
+</script>
+
+</body>
+</html>

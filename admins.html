@@ -1,0 +1,406 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<link rel="icon" type="image/png" href="images/faviconadmin.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Администраторы — Rock'n'Rolla</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 30px;
+            background: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        .container { max-width: 1000px; margin: auto; }
+
+        h1, h2 { color: #ff9d00; }
+
+        a { color: #ffb52e; text-decoration: none; }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: #1c1c1c;
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 25px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 15px;
+            background: #292929;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+        }
+
+        label { display: block; margin-top: 10px; }
+
+        button {
+            padding: 11px 17px;
+            border: 0;
+            border-radius: 6px;
+            background: #ff9d00;
+            color: #111;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+        }
+
+        button:hover { background: #ffc04d; }
+
+        button:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        button.delete {
+            background: #a83232;
+            color: white;
+        }
+
+        .user {
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 18px;
+            margin-top: 15px;
+            overflow-wrap: anywhere;
+        }
+
+        .role {
+            color: #ffb52e;
+            font-weight: bold;
+        }
+
+        .muted { color: #aaa; }
+
+        #message { margin: 15px 0; }
+
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .panel { padding: 16px; }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="top">
+        <div>
+            <h1>Управление администраторами</h1>
+            <a href="dashboard.html">← Вернуться в панель</a>
+        </div>
+        <button id="logoutBtn">Выйти</button>
+    </div>
+
+    <div class="panel">
+        <h2>Состав администрации</h2>
+        <p id="counts" class="muted">Загрузка...</p>
+        <p class="muted">
+            Максимум: 2 владельца и 3 администратора.
+        </p>
+    </div>
+
+    <div class="panel">
+        <h2 id="formTitle">Добавить администратора</h2>
+
+        <form id="userForm">
+            <label for="userId">User UID из Supabase Authentication</label>
+            <input
+                id="userId"
+                type="text"
+                placeholder="Вставь UUID пользователя"
+                required
+            >
+
+            <label for="displayName">Имя</label>
+            <input
+                id="displayName"
+                type="text"
+                maxlength="100"
+                placeholder="Например: Александр"
+                required
+            >
+
+            <label for="role">Роль</label>
+            <select id="role" required>
+                <option value="admin">Admin</option>
+                <option value="owner">Owner</option>
+            </select>
+
+            <button type="submit" id="saveBtn">Добавить</button>
+            <button type="button" id="cancelBtn" hidden>Отмена</button>
+        </form>
+
+        <p id="message"></p>
+    </div>
+
+    <div class="panel">
+        <h2>Все пользователи панели</h2>
+        <div id="usersList">Загрузка...</div>
+    </div>
+
+</div>
+
+<script>
+const form = document.getElementById("userForm");
+const list = document.getElementById("usersList");
+const message = document.getElementById("message");
+const counts = document.getElementById("counts");
+
+const userIdInput = document.getElementById("userId");
+const nameInput = document.getElementById("displayName");
+const roleInput = document.getElementById("role");
+
+let currentUser = null;
+let editingId = null;
+
+async function checkOwner() {
+    const { data, error } = await supabaseClient.auth.getUser();
+
+    if (error || !data.user) {
+        window.location.href = "admin.html";
+        return false;
+    }
+
+    currentUser = data.user;
+
+    const { data: profile, error: profileError } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (profileError || !profile || profile.role !== "owner") {
+        alert("Эта страница доступна только владельцам.");
+        window.location.href = "dashboard.html";
+        return false;
+    }
+
+    return true;
+}
+
+async function loadUsers() {
+    list.textContent = "Загрузка пользователей...";
+
+    const { data, error } = await supabaseClient
+        .from("profiles")
+        .select("user_id, display_name, role, created_at")
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        console.error(error);
+        list.textContent = "Ошибка загрузки: " + error.message;
+        return;
+    }
+
+    const owners = data.filter(user => user.role === "owner").length;
+    const admins = data.filter(user => user.role === "admin").length;
+
+    counts.textContent =
+        "Владельцы: " + owners + "/2 | Администраторы: " +
+        admins + "/3";
+
+    list.replaceChildren();
+
+    if (!data.length) {
+        list.textContent = "Пользователей пока нет.";
+        return;
+    }
+
+    data.forEach(user => {
+        const card = document.createElement("div");
+        card.className = "user";
+
+        const name = document.createElement("h3");
+        name.textContent = user.display_name || "Без имени";
+
+        const role = document.createElement("p");
+        role.className = "role";
+        role.textContent = user.role === "owner" ? "OWNER" : "ADMIN";
+
+        const uid = document.createElement("p");
+        uid.className = "muted";
+        uid.textContent = "UID: " + user.user_id;
+
+        card.append(name, role, uid);
+
+        if (user.user_id === currentUser.id) {
+            const own = document.createElement("p");
+            own.className = "muted";
+            own.textContent = "Это ваш аккаунт";
+            card.appendChild(own);
+        }
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Изменить";
+        editBtn.addEventListener("click", () => editUser(user));
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Отозвать доступ";
+        deleteBtn.className = "delete";
+        deleteBtn.addEventListener("click", () => removeUser(user));
+
+        card.append(editBtn, deleteBtn);
+        list.appendChild(card);
+    });
+}
+
+form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const saveBtn = document.getElementById("saveBtn");
+    saveBtn.disabled = true;
+    message.textContent = "Сохранение...";
+
+    try {
+        const userId = userIdInput.value.trim();
+        const displayName = nameInput.value.trim();
+        const role = roleInput.value;
+
+        const uuidPattern =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        if (!uuidPattern.test(userId)) {
+            throw new Error("Проверь User UID. Он должен быть UUID.");
+        }
+
+        if (!displayName) {
+            throw new Error("Введи имя пользователя.");
+        }
+
+        const userData = {
+            user_id: userId,
+            display_name: displayName,
+            role: role
+        };
+
+        let result;
+
+        if (editingId) {
+            result = await supabaseClient
+                .from("profiles")
+                .update({
+                    display_name: displayName,
+                    role: role
+                })
+                .eq("user_id", editingId);
+        } else {
+            result = await supabaseClient
+                .from("profiles")
+                .insert(userData);
+        }
+
+        if (result.error) throw result.error;
+
+        message.textContent = "Изменения сохранены!";
+        resetForm();
+        await loadUsers();
+
+    } catch (error) {
+        console.error(error);
+        message.textContent = "Ошибка: " + error.message;
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
+
+function editUser(user) {
+    editingId = user.user_id;
+
+    userIdInput.value = user.user_id;
+    userIdInput.disabled = true;
+
+    nameInput.value = user.display_name || "";
+    roleInput.value = user.role;
+
+    document.getElementById("formTitle").textContent =
+        "Редактировать пользователя";
+    document.getElementById("saveBtn").textContent =
+        "Сохранить изменения";
+    document.getElementById("cancelBtn").hidden = false;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetForm() {
+    editingId = null;
+    form.reset();
+    userIdInput.disabled = false;
+
+    document.getElementById("formTitle").textContent =
+        "Добавить администратора";
+    document.getElementById("saveBtn").textContent = "Добавить";
+    document.getElementById("cancelBtn").hidden = true;
+}
+
+document.getElementById("cancelBtn").addEventListener("click", () => {
+    resetForm();
+    message.textContent = "";
+});
+
+async function removeUser(user) {
+    if (user.user_id === currentUser.id) {
+        alert("Нельзя отозвать доступ у самого себя.");
+        return;
+    }
+
+    const confirmed = confirm(
+        "Отозвать доступ у пользователя " +
+        (user.display_name || user.user_id) + "?"
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabaseClient
+        .from("profiles")
+        .delete()
+        .eq("user_id", user.user_id);
+
+    if (error) {
+        message.textContent = "Ошибка: " + error.message;
+        return;
+    }
+
+    message.textContent =
+        "Доступ к админ-панели отозван. Аккаунт Auth не удалён.";
+
+    await loadUsers();
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "admin.html";
+});
+
+(async function init() {
+    const allowed = await checkOwner();
+
+    if (allowed) {
+        await loadUsers();
+    }
+})();
+</script>
+</body>
+</html>
